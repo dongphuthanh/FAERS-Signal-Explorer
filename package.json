@@ -1,0 +1,16 @@
+{
+  "name": "faers-signal-explorer",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20.6" },
+  "scripts": {
+    "db:up":      "docker compose up -d --wait",
+    "db:down":    "docker compose down",
+    "db:reset":   "docker compose down -v",
+    "migrate":    "node --env-file=.env scripts/migrate.mjs",
+    "load:faers": "node --env-file=.env scripts/load-faers.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  }
+}
