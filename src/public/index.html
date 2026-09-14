@@ -73,6 +73,10 @@
     const ev = (text, cls = '') => { const d = document.createElement('div'); d.className = 'ev ' + cls; d.textContent = text; events.appendChild(d); };
 
     const res = await fetch('/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question }) });
+    if (!res.ok) {   // 429 daily cap, 401 password, 400 — plain JSON, not a stream
+      let msg = `${res.status} ${res.statusText}`; try { msg = (await res.json()).error ?? msg; } catch {}
+      ev(`✗ ${msg}`, 'err'); go.disabled = false; return;
+    }
     const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
     while (true) {
       const { value, done } = await reader.read(); if (done) break;
