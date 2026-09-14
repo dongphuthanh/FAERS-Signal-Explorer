@@ -2,18 +2,28 @@
   "name": "faers-signal-explorer",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20.6" },
+  "engines": {
+    "node": ">=20.6"
+  },
   "scripts": {
-    "db:up":      "docker compose up -d --wait",
-    "db:down":    "docker compose down",
-    "db:reset":   "docker compose down -v",
-    "db:psql":    "docker compose exec db psql -U postgres -d faers",
-    "migrate":    "node --env-file=.env scripts/migrate.mjs",
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v",
+    "db:psql": "docker compose exec db psql -U postgres -d faers",
+    "migrate": "node --env-file=.env scripts/migrate.mjs",
     "load:faers": "node --env-file=.env scripts/load-faers.mjs",
     "derive": "node --env-file=.env scripts/derive.mjs",
-    "test":   "node --env-file=.env --test"
+    "test": "node --env-file=.env --test",
+    "drugs:load": "node --env-file=.env scripts/load-drugs.mjs",
+    "labels:fetch": "node --env-file=.env scripts/fetch-dailymed.mjs",
+    "labels:ingest": "node --env-file=.env scripts/ingest-dailymed.mjs",
+    "labels:embed": "node --env-file=.env scripts/embed-labels.mjs",
+    "search": "node --env-file=.env scripts/search.mjs",
+    "eval:retrieval": "node --env-file=.env scripts/eval-retrieval.mjs"
   },
   "dependencies": {
+    "@xenova/transformers": "^2.17.2",
+    "fast-xml-parser": "^5.11.1",
     "pg": "^8.13.0"
   }
 }

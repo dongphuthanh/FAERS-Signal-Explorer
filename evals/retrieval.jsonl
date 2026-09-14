@@ -1,0 +1,31 @@
+{"id":"sema-gastric","drug":"SEMAGLUTIDE","query":"delayed gastric emptying","section":"warnings_precautions","phrase":"gastric emptying"}
+{"id":"sema-gastric-para","drug":"SEMAGLUTIDE","query":"stomach empties slowly, food stays in the stomach","section":"warnings_precautions","phrase":"gastric emptying"}
+{"id":"sema-thyroid","drug":"SEMAGLUTIDE","query":"thyroid tumors","section":"boxed_warning","phrase":"thyroid C-cell"}
+{"id":"sema-thyroid-para","drug":"SEMAGLUTIDE","query":"medullary thyroid carcinoma risk in rodents","section":"boxed_warning","phrase":"thyroid C-cell"}
+{"id":"sema-pancreatitis","drug":"SEMAGLUTIDE","query":"pancreatitis","section":"warnings_precautions","phrase":"pancreatitis"}
+{"id":"sema-retinopathy","drug":"SEMAGLUTIDE","query":"eye complications in diabetics","section":"warnings_precautions","phrase":"diabetic retinopathy"}
+{"id":"sema-aki","drug":"SEMAGLUTIDE","query":"kidney failure from dehydration","section":"warnings_precautions","phrase":"acute kidney injury"}
+{"id":"sema-hypo","drug":"SEMAGLUTIDE","query":"low blood sugar when combined with insulin","section":"warnings_precautions","phrase":"hypoglycemia"}
+{"id":"sema-ileus","drug":"SEMAGLUTIDE","query":"ileus","section":"adverse_reactions","phrase":"ileus"}
+{"id":"sema-gallbladder","drug":"SEMAGLUTIDE","query":"gallstones","section":"warnings_precautions","phrase":"cholelithiasis"}
+{"id":"tirz-nausea","drug":"TIRZEPATIDE","query":"most common side effects nausea","section":"adverse_reactions","phrase":"nausea"}
+{"id":"atorva-myopathy","drug":"ATORVASTATIN","query":"muscle pain and weakness","section":"warnings_precautions","phrase":"myopathy"}
+{"id":"atorva-rhabdo","drug":"ATORVASTATIN","query":"rhabdomyolysis","section":"warnings_precautions","phrase":"rhabdomyolysis"}
+{"id":"atorva-liver","drug":"ATORVASTATIN","query":"liver enzyme elevations","section":"warnings_precautions","phrase":"hepatic"}
+{"id":"rosuva-rhabdo","drug":"ROSUVASTATIN","query":"muscle breakdown with kidney damage","section":"warnings_precautions","phrase":"rhabdomyolysis"}
+{"id":"rosuva-protein","drug":"ROSUVASTATIN","query":"protein in urine","section":"warnings_precautions","phrase":"proteinuria"}
+{"id":"simva-myopathy","drug":"SIMVASTATIN","query":"myopathy","section":"warnings_precautions","phrase":"myopathy"}
+{"id":"adali-tb","drug":"ADALIMUMAB","query":"tuberculosis reactivation","section":"boxed_warning","phrase":"tuberculosis"}
+{"id":"adali-lymphoma","drug":"ADALIMUMAB","query":"cancer risk in children and adolescents","section":"boxed_warning","phrase":"lymphoma"}
+{"id":"apix-spinal","drug":"APIXABAN","query":"bleeding into the spine after epidural anesthesia","section":"boxed_warning","phrase":"spinal"}
+{"id":"riva-epidural","drug":"RIVAROXABAN","query":"epidural hematoma","section":"boxed_warning","phrase":"epidural"}
+{"id":"pembro-pneumonitis","drug":"PEMBROLIZUMAB","query":"lung inflammation from immune response","section":"warnings_precautions","phrase":"pneumonitis"}
+{"id":"nivo-colitis","drug":"NIVOLUMAB","query":"colitis","section":"warnings_precautions","phrase":"colitis"}
+{"id":"dupi-conj","drug":"DUPILUMAB","query":"eye redness and irritation","section":"warnings_precautions","phrase":"conjunctivitis"}
+{"id":"lena-fetal","drug":"LENALIDOMIDE","query":"birth defects","section":"boxed_warning","phrase":"embryo-fetal"}
+{"id":"upa-thrombosis","drug":"UPADACITINIB","query":"blood clots","section":"boxed_warning","phrase":"thrombosis"}
+{"id":"metf-lactic","drug":"METFORMIN HYDROCHLORIDE","query":"lactic acidosis","section":"boxed_warning","phrase":"lactic acidosis"}
+{"id":"glarg-potassium","drug":"INSULIN GLARGINE","query":"low potassium","section":"warnings_precautions","phrase":"hypokalemia"}
+{"id":"deno-onj","drug":"DENOSUMAB","query":"jaw bone death","section":"warnings_precautions","phrase":"osteonecrosis of the jaw"}
+{"id":"inflix-hstcl","drug":"INFLIXIMAB","query":"hepatosplenic T-cell lymphoma","section":"boxed_warning","phrase":"hepatosplenic"}
+{"id":"myco-pregnancy","drug":"MYCOPHENOLATE MOFETIL","query":"miscarriage risk","section":"boxed_warning","phrase":"pregnancy loss"}

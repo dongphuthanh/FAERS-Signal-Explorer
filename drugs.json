@@ -1,0 +1,460 @@
+[
+  {
+    "prod_ai": "SEMAGLUTIDE",
+    "class": "glp1",
+    "labels": [
+      {
+        "search": "OZEMPIC",
+        "labeler": "NOVO NORDISK",
+        "match": "INJECTION"
+      },
+      {
+        "search": "WEGOVY",
+        "labeler": "NOVO NORDISK"
+      },
+      {
+        "search": "RYBELSUS",
+        "labeler": "NOVO NORDISK"
+      }
+    ]
+  },
+  {
+    "prod_ai": "TIRZEPATIDE",
+    "class": "glp1",
+    "labels": [
+      {
+        "search": "MOUNJARO",
+        "labeler": "ELI LILLY"
+      },
+      {
+        "search": "ZEPBOUND",
+        "labeler": "ELI LILLY"
+      }
+    ]
+  },
+  {
+    "prod_ai": "LIRAGLUTIDE",
+    "class": "glp1",
+    "labels": [
+      {
+        "search": "VICTOZA",
+        "labeler": "NOVO NORDISK"
+      },
+      {
+        "search": "SAXENDA",
+        "labeler": "NOVO NORDISK"
+      }
+    ]
+  },
+  {
+    "prod_ai": "DULAGLUTIDE",
+    "class": "glp1",
+    "labels": [
+      {
+        "search": "TRULICITY",
+        "labeler": "ELI LILLY"
+      }
+    ]
+  },
+  {
+    "prod_ai": "EXENATIDE",
+    "class": "glp1",
+    "labels": [
+      {
+        "search": "BYETTA",
+        "labeler": "ASTRAZENECA"
+      }
+    ]
+  },
+  {
+    "prod_ai": "ATORVASTATIN",
+    "class": "statin",
+    "aliases": [
+      "ATORVASTATIN CALCIUM",
+      "ATORVASTATIN CALCIUM ANHYDROUS",
+      "ATORVASTATIN CALCIUM TRIHYDRATE",
+      "ATORVASTATIN CALCIUM PROPYLENE GLYCOL SOLVATE"
+    ],
+    "labels": [
+      {
+        "search": "LIPITOR",
+        "labeler": "VIATRIS"
+      }
+    ]
+  },
+  {
+    "prod_ai": "SIMVASTATIN",
+    "class": "statin",
+    "labels": [
+      {
+        "search": "ZOCOR",
+        "labeler": "ORGANON"
+      }
+    ]
+  },
+  {
+    "prod_ai": "ROSUVASTATIN",
+    "class": "statin",
+    "aliases": [
+      "ROSUVASTATIN CALCIUM"
+    ],
+    "labels": [
+      {
+        "search": "CRESTOR",
+        "labeler": "ASTRAZENECA"
+      }
+    ]
+  },
+  {
+    "prod_ai": "PRAVASTATIN",
+    "class": "statin",
+    "aliases": [
+      "PRAVASTATIN SODIUM"
+    ],
+    "labels": [
+      {
+        "search": "PRAVASTATIN SODIUM"
+      }
+    ]
+  },
+  {
+    "prod_ai": "LOVASTATIN",
+    "class": "statin",
+    "labels": [
+      {
+        "search": "LOVASTATIN"
+      }
+    ]
+  },
+  {
+    "prod_ai": "FLUVASTATIN SODIUM",
+    "class": "statin",
+    "labels": [
+      {
+        "search": "FLUVASTATIN SODIUM"
+      }
+    ]
+  },
+  {
+    "prod_ai": "PITAVASTATIN",
+    "class": "statin",
+    "aliases": [
+      "PITAVASTATIN CALCIUM"
+    ],
+    "labels": [
+      {
+        "search": "LIVALO",
+        "labeler": "KOWA"
+      }
+    ]
+  },
+  {
+    "prod_ai": "ADALIMUMAB",
+    "class": "anti_tnf",
+    "labels": [
+      {
+        "search": "HUMIRA",
+        "labeler": "ABBVIE"
+      }
+    ]
+  },
+  {
+    "prod_ai": "INFLIXIMAB",
+    "class": "anti_tnf",
+    "labels": [
+      {
+        "search": "REMICADE",
+        "labeler": "JANSSEN"
+      }
+    ]
+  },
+  {
+    "prod_ai": "ETANERCEPT",
+    "class": "anti_tnf",
+    "labels": [
+      {
+        "search": "ENBREL",
+        "labeler": "IMMUNEX"
+      }
+    ]
+  },
+  {
+    "prod_ai": "CERTOLIZUMAB PEGOL",
+    "class": "anti_tnf",
+    "labels": [
+      {
+        "search": "CIMZIA",
+        "labeler": "UCB"
+      }
+    ]
+  },
+  {
+    "prod_ai": "RISANKIZUMAB-RZAA",
+    "class": "il23",
+    "labels": [
+      {
+        "search": "SKYRIZI",
+        "labeler": "ABBVIE"
+      }
+    ]
+  },
+  {
+    "prod_ai": "GUSELKUMAB",
+    "class": "il23",
+    "labels": [
+      {
+        "search": "TREMFYA",
+        "labeler": "JANSSEN"
+      }
+    ]
+  },
+  {
+    "prod_ai": "SECUKINUMAB",
+    "class": "il17",
+    "labels": [
+      {
+        "search": "COSENTYX",
+        "labeler": "NOVARTIS"
+      }
+    ]
+  },
+  {
+    "prod_ai": "BIMEKIZUMAB-BKZX",
+    "class": "il17",
+    "labels": [
+      {
+        "search": "BIMZELX",
+        "labeler": "UCB"
+      }
+    ]
+  },
+  {
+    "prod_ai": "DUPILUMAB",
+    "class": "il4_il13",
+    "labels": [
+      {
+        "search": "DUPIXENT",
+        "labeler": "SANOFI"
+      }
+    ]
+  },
+  {
+    "prod_ai": "UPADACITINIB",
+    "class": "jak",
+    "labels": [
+      {
+        "search": "RINVOQ",
+        "labeler": "ABBVIE"
+      }
+    ]
+  },
+  {
+    "prod_ai": "TOCILIZUMAB",
+    "class": "il6",
+    "labels": [
+      {
+        "search": "ACTEMRA",
+        "labeler": "GENENTECH"
+      }
+    ]
+  },
+  {
+    "prod_ai": "ABATACEPT",
+    "class": null,
+    "labels": [
+      {
+        "search": "ORENCIA",
+        "labeler": "SQUIBB"
+      }
+    ]
+  },
+  {
+    "prod_ai": "VEDOLIZUMAB",
+    "class": null,
+    "labels": [
+      {
+        "search": "ENTYVIO",
+        "labeler": "TAKEDA"
+      }
+    ]
+  },
+  {
+    "prod_ai": "OMALIZUMAB",
+    "class": null,
+    "labels": [
+      {
+        "search": "XOLAIR",
+        "labeler": "GENENTECH"
+      }
+    ]
+  },
+  {
+    "prod_ai": "RITUXIMAB",
+    "class": null,
+    "labels": [
+      {
+        "search": "RITUXAN",
+        "labeler": "GENENTECH",
+        "exclude": "HYCELA"
+      }
+    ]
+  },
+  {
+    "prod_ai": "PEMBROLIZUMAB",
+    "class": "pd1",
+    "labels": [
+      {
+        "search": "KEYTRUDA",
+        "labeler": "MERCK",
+        "exclude": "QLEX"
+      }
+    ]
+  },
+  {
+    "prod_ai": "NIVOLUMAB",
+    "class": "pd1",
+    "labels": [
+      {
+        "search": "OPDIVO",
+        "labeler": "SQUIBB"
+      }
+    ]
+  },
+  {
+    "prod_ai": "LENALIDOMIDE",
+    "class": null,
+    "labels": [
+      {
+        "search": "REVLIMID",
+        "labeler": "CELGENE"
+      }
+    ]
+  },
+  {
+    "prod_ai": "METHOTREXATE",
+    "class": null,
+    "labels": [
+      {
+        "search": "METHOTREXATE"
+      }
+    ]
+  },
+  {
+    "prod_ai": "APIXABAN",
+    "class": "doac",
+    "labels": [
+      {
+        "search": "ELIQUIS",
+        "labeler": "SQUIBB"
+      }
+    ]
+  },
+  {
+    "prod_ai": "RIVAROXABAN",
+    "class": "doac",
+    "labels": [
+      {
+        "search": "XARELTO",
+        "labeler": "JANSSEN"
+      }
+    ]
+  },
+  {
+    "prod_ai": "INSULIN GLARGINE",
+    "class": null,
+    "labels": [
+      {
+        "search": "LANTUS",
+        "labeler": "SANOFI"
+      }
+    ]
+  },
+  {
+    "prod_ai": "METFORMIN HYDROCHLORIDE",
+    "class": null,
+    "labels": [
+      {
+        "search": "METFORMIN HYDROCHLORIDE"
+      }
+    ]
+  },
+  {
+    "prod_ai": "EVOLOCUMAB",
+    "class": null,
+    "labels": [
+      {
+        "search": "REPATHA",
+        "labeler": "AMGEN"
+      }
+    ]
+  },
+  {
+    "prod_ai": "DENOSUMAB",
+    "class": null,
+    "labels": [
+      {
+        "search": "PROLIA",
+        "labeler": "AMGEN"
+      }
+    ]
+  },
+  {
+    "prod_ai": "ABALOPARATIDE",
+    "class": null,
+    "labels": [
+      {
+        "search": "TYMLOS",
+        "labeler": "RADIUS"
+      }
+    ]
+  },
+  {
+    "prod_ai": "MEDROXYPROGESTERONE ACETATE",
+    "class": null,
+    "labels": [
+      {
+        "search": "DEPO-PROVERA",
+        "labeler": "PHARMACIA"
+      }
+    ]
+  },
+  {
+    "prod_ai": "TACROLIMUS",
+    "class": null,
+    "labels": [
+      {
+        "search": "PROGRAF",
+        "labeler": "ASTELLAS"
+      }
+    ]
+  },
+  {
+    "prod_ai": "MYCOPHENOLATE MOFETIL",
+    "class": null,
+    "labels": [
+      {
+        "search": "CELLCEPT",
+        "labeler": "GENENTECH"
+      }
+    ]
+  },
+  {
+    "prod_ai": "PREDNISONE",
+    "class": null,
+    "labels": [
+      {
+        "search": "PREDNISONE"
+      }
+    ]
+  },
+  {
+    "prod_ai": "DEXAMETHASONE",
+    "class": null,
+    "labels": [
+      {
+        "search": "DEXAMETHASONE",
+        "match": "TABLET"
+      }
+    ]
+  }
+]
