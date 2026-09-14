@@ -77,3 +77,44 @@ export async function excludedCount({ drugId, minCases = 10, roles = ROLES }) {
     [drugId, roles, minCases]);
   return r.n;
 }
+
+// Parameterized aggregate for the pure-SQL questions: "serious hepatic
+// events for statins in patients over 65". Every filter is optional and
+// every value is a parameter; the model chooses arguments, never SQL.
+//
+//   drugId     one drug (salt forms included)      drugClass  every curated drug in a class
+//   ageBracket '<18' | '18-44' | '45-64' | '65+' | 'unknown'
+//   outcomes   subset of DE LT HO DS CA RI OT       termPattern  case-insensitive regex on the reaction term
+export async function reportCounts({ drugId = null, drugClass = null, ageBracket = null, outcomes = null,
+                                     termPattern = null, minCases = 3, limit = 50, roles = ROLES }) {
+  const { rows } = await pool.query(`
+    with target as (
+      select d.id from drugs d
+      left join drugs b on b.id = d.canonical_id
+      where ($1::int  is null or d.id = $1 or d.canonical_id = $1)
+        and ($2::text is null or d.drug_class = $2 or b.drug_class = $2)
+    ),
+    exposed as (
+      select distinct cd.case_id from case_drugs cd
+      join target t on t.id = cd.drug_id
+      where cd.role_cod = any($3)
+    ),
+    filtered as (
+      select e.case_id from exposed e join cases c on c.id = e.case_id
+      where ($4::text is null or c.age_bracket = $4)
+        and ($5::text[] is null or exists (select 1 from case_outcomes o where o.case_id = e.case_id and o.outc_cod = any($5)))
+    ),
+    terms as (
+      select cr.reaction_term, count(*) as cases
+      from case_reactions cr join filtered f on f.case_id = cr.case_id
+      left join excluded_terms x on x.term = cr.reaction_term
+      where x.term is null and ($6::text is null or cr.reaction_term ~* $6)
+      group by cr.reaction_term having count(*) >= $7
+    )
+    select reaction_term, cases::int,
+           (select count(*) from exposed)::int  as exposed_cases,
+           (select count(*) from filtered)::int as filtered_cases
+    from terms order by cases desc, reaction_term limit $8`,
+    [drugId, drugClass, roles, ageBracket, outcomes, termPattern, minCases, limit]);
+  return rows;
+}

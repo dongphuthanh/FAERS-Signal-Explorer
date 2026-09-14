@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAERS Signal Explorer</title>
+<style>
+  :root { --ink:#131a1e; --ink-2:#4a5761; --ink-3:#7a8790; --rule:#d8dee2; --paper:#fff; --ground:#f4f6f7; --accent:#0e5f68; --wash:#e3f0f1; --warn:#9c4a17; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink); font: 15px/1.55 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 80px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--ink-3); font-size: 13px; margin: 0 0 22px; }
+  form { display:flex; gap:8px; }
+  textarea { flex:1; font: inherit; padding: 10px 12px; border:1px solid var(--rule); border-radius:6px; resize: vertical; min-height: 48px; background: var(--paper); }
+  button { font: inherit; padding: 0 18px; border:0; border-radius:6px; background: var(--accent); color:#fff; cursor:pointer; }
+  button:disabled { opacity:.5; cursor: default; }
+  .ex { margin: 10px 0 0; font-size: 13px; color: var(--ink-3); }
+  .ex a { color: var(--accent); cursor: pointer; margin-right: 12px; }
+  .turn { margin-top: 26px; }
+  .q { font-weight: 600; margin-bottom: 8px; }
+  .ev { font: 12.5px/1.5 ui-monospace, Menlo, Consolas, monospace; color: var(--ink-2); background: var(--paper); border:1px solid var(--rule); border-radius:5px; padding: 8px 12px; margin: 6px 0; white-space: pre-wrap; }
+  .ev.err { color: var(--warn); border-color: var(--warn); }
+  .ans { background: var(--paper); border:1px solid var(--rule); border-radius:6px; padding: 14px 18px; margin-top: 8px; white-space: pre-wrap; }
+  .meta { font-size: 12px; color: var(--ink-3); margin-top: 6px; }
+  .frame { font-size: 12.5px; color: var(--ink-3); border-top: 1px solid var(--rule); margin-top: 40px; padding-top: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>FAERS Signal Explorer</h1>
+  <p class="sub">What is being reported, and does the label address it. Reports, not rates; reporting ratios, not risks.</p>
+
+  <form id="f">
+    <textarea id="q" placeholder="What's being reported for semaglutide that isn't in the label?"></textarea>
+    <button id="go" type="submit">Ask</button>
+  </form>
+  <p class="ex">
+    <a data-q="What's being reported for semaglutide that isn't in the label?">semaglutide gap</a>
+    <a data-q="Serious hepatic events reported for statins in patients over 65.">statins, hepatic, 65+</a>
+    <a data-q="What does the atorvastatin label say about muscle symptoms?">atorvastatin label, muscle</a>
+    <a data-q="Is the rhabdomyolysis signal for rosuvastatin different from the other statins?">rhabdo across statins</a>
+  </p>
+
+  <div id="log"></div>
+
+  <p class="frame">FAERS is a spontaneous reporting system with no denominator. Every number here is a count of reports or a ratio of reporting proportions — never an incidence, a risk, or evidence of causation. "No matching label text" describes our search of the label versions loaded, nothing more. Not for individual medical decisions.</p>
+</div>
+
+<script>
+  const log = document.getElementById('log'), q = document.getElementById('q'), go = document.getElementById('go');
+  document.querySelectorAll('.ex a').forEach(a => a.onclick = () => { q.value = a.dataset.q; q.focus(); });
+
+  document.getElementById('f').onsubmit = async (e) => {
+    e.preventDefault();
+    const question = q.value.trim(); if (!question) return;
+    go.disabled = true;
+
+    const turn = document.createElement('div'); turn.className = 'turn';
+    turn.innerHTML = `<div class="q"></div><div class="events"></div><div class="ans"></div><div class="meta"></div>`;
+    turn.querySelector('.q').textContent = question;
+    log.prepend(turn);
+    const events = turn.querySelector('.events'), ans = turn.querySelector('.ans'), meta = turn.querySelector('.meta');
+    const ev = (text, cls = '') => { const d = document.createElement('div'); d.className = 'ev ' + cls; d.textContent = text; events.appendChild(d); };
+
+    const res = await fetch('/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question }) });
+    const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
+    while (true) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i; while ((i = buf.indexOf('\n\n')) >= 0) {
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 2);
+        if (!line.startsWith('data: ')) continue;
+        const m = JSON.parse(line.slice(6));
+        if (m.type === 'text') ans.textContent += m.text;
+        else if (m.type === 'tool_use') ev(`→ ${m.name} ${JSON.stringify(m.input)}`);
+        else if (m.type === 'tool_result') ev(`← ${m.name} ${m.is_error ? 'ERROR ' : ''}${m.ms} ms  ${m.preview.slice(0, 120)}…`, m.is_error ? 'err' : '');
+        else if (m.type === 'error') ev(`✗ ${m.message}`, 'err');
+        else if (m.type === 'done') meta.textContent = `${m.turns} turn(s) · ${m.usage.input_tokens} in / ${m.usage.output_tokens} out · cache read ${m.usage.cache_read_input_tokens}`;
+      }
+    }
+    go.disabled = false;
+  };
+</script>
+</body>
+</html>
