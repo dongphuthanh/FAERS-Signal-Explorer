@@ -1,0 +1,162 @@
+[
+  {
+    "term": "Off label use",
+    "category": "administrative",
+    "reason": "how the product was used, not what happened to the patient"
+  },
+  {
+    "term": "Product use in unapproved indication",
+    "category": "administrative",
+    "reason": "how the product was used, not what happened to the patient"
+  },
+  {
+    "term": "Product use issue",
+    "category": "administrative",
+    "reason": "how the product was used, not what happened to the patient"
+  },
+  {
+    "term": "Intentional product misuse",
+    "category": "administrative",
+    "reason": "how the product was used, not what happened to the patient"
+  },
+  {
+    "term": "Intentional product use issue",
+    "category": "administrative",
+    "reason": "how the product was used, not what happened to the patient"
+  },
+  {
+    "term": "Wrong technique in product usage process",
+    "category": "administrative",
+    "reason": "administration error"
+  },
+  {
+    "term": "Inappropriate schedule of product administration",
+    "category": "administrative",
+    "reason": "administration error"
+  },
+  {
+    "term": "Product dose omission issue",
+    "category": "administrative",
+    "reason": "administration error"
+  },
+  {
+    "term": "Incorrect dose administered by product",
+    "category": "administrative",
+    "reason": "administration error"
+  },
+  {
+    "term": "Incorrect dose administered",
+    "category": "administrative",
+    "reason": "administration error"
+  },
+  {
+    "term": "Drug dose titration not performed",
+    "category": "administrative",
+    "reason": "administration error"
+  },
+  {
+    "term": "Wrong product administered",
+    "category": "administrative",
+    "reason": "administration error"
+  },
+  {
+    "term": "Product administration error",
+    "category": "administrative",
+    "reason": "administration error"
+  },
+  {
+    "term": "Expired product administered",
+    "category": "administrative",
+    "reason": "product handling, not an event"
+  },
+  {
+    "term": "Product storage error",
+    "category": "administrative",
+    "reason": "product handling, not an event"
+  },
+  {
+    "term": "Counterfeit product administered",
+    "category": "administrative",
+    "reason": "supply chain, not pharmacology"
+  },
+  {
+    "term": "Product substitution issue",
+    "category": "administrative",
+    "reason": "supply chain, not pharmacology"
+  },
+  {
+    "term": "Device malfunction",
+    "category": "device",
+    "reason": "the injector, not the drug"
+  },
+  {
+    "term": "Device leakage",
+    "category": "device",
+    "reason": "the injector, not the drug"
+  },
+  {
+    "term": "Device use issue",
+    "category": "device",
+    "reason": "the injector, not the drug"
+  },
+  {
+    "term": "Device use error",
+    "category": "device",
+    "reason": "the injector, not the drug"
+  },
+  {
+    "term": "Needle issue",
+    "category": "device",
+    "reason": "the injector, not the drug"
+  },
+  {
+    "term": "Device difficult to use",
+    "category": "device",
+    "reason": "the injector, not the drug"
+  },
+  {
+    "term": "Corrective lens user",
+    "category": "non_event",
+    "reason": "patient history recorded as a term; the patient wears glasses"
+  },
+  {
+    "term": "Product dose confusion",
+    "category": "administrative",
+    "reason": "administration error"
+  },
+  {
+    "term": "Device use confusion",
+    "category": "device",
+    "reason": "the injector, not the drug"
+  },
+  {
+    "term": "Suspected counterfeit product",
+    "category": "administrative",
+    "reason": "supply chain, not pharmacology"
+  },
+  {
+    "term": "Product prescribing issue",
+    "category": "administrative",
+    "reason": "how the product was used, not what happened to the patient"
+  },
+  {
+    "term": "Underdose",
+    "category": "administrative",
+    "reason": "administration error"
+  },
+  {
+    "term": "Accidental overdose",
+    "category": "administrative",
+    "reason": "administration error; the resulting events are reported as their own terms"
+  },
+  {
+    "term": "Hearing aid user",
+    "category": "non_event",
+    "reason": "patient history recorded as a term"
+  },
+  {
+    "term": "Product information content complaint",
+    "category": "administrative",
+    "reason": "a complaint about the leaflet, not an event"
+  }
+]

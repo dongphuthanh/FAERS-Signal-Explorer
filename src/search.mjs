@@ -14,7 +14,8 @@ export async function searchLabel({ query, drugId = null, k = 10, perList = 50 }
   const [qvec] = await embed([query]);
   const { rows } = await pool.query(`
     with vec as (
-      select id, row_number() over (order by embedding <=> $1::vector) as rank
+      select id, row_number() over (order by embedding <=> $1::vector) as rank,
+             embedding <=> $1::vector as dist
       from chunks
       where $3::int is null or drug_id = $3
       order by embedding <=> $1::vector
@@ -34,13 +35,15 @@ export async function searchLabel({ query, drugId = null, k = 10, perList = 50 }
     fused as (
       select coalesce(vec.id, kw.id) as id,
              vec.rank as vec_rank,
+             vec.dist as vec_dist,
              kw.rank  as kw_rank,
              coalesce(1.0 / ($5 + vec.rank), 0) + coalesce(1.0 / ($5 + kw.rank), 0) as score
       from vec full outer join kw on kw.id = vec.id
     )
     select c.id, c.document_id, c.drug_id, c.section, c.position, c.content,
            x.title as section_title, l.title as label_title, l.setid,
-           f.vec_rank, f.kw_rank, round(f.score::numeric, 5) as score
+           f.vec_rank, f.kw_rank, round(f.score::numeric, 5) as score,
+           round((1 - f.vec_dist)::numeric, 3) as vec_sim
     from fused f
     join chunks c on c.id = f.id
     join label_documents x on x.id = c.document_id
