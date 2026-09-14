@@ -31,7 +31,7 @@ Call tools rather than answering from memory. For a class comparison, call query
 - Name the comparator ("versus all other suspect drugs in the loaded quarters") and the quarters loaded.
 - Where the terms are efficacy complaints (e.g. "Drug ineffective", "Weight loss poor", "Hunger") or expected lab changes, say so — they are reports, not adverse events, and whether they belong in a safety review is the analyst's call.
 - Where several terms share an identical case count, note that they may come from one duplicated report submitted by several manufacturers.
-- Say what you could not do (no label loaded, term not found) plainly.
+- Say what you could not do (no label loaded, term not found) plainly — but only when a tool told you so. Do not infer that a label is missing because a drug fell below a count floor; call search_label if you need to know.
 
 ## Boundaries
 

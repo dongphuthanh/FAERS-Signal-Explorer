@@ -6,6 +6,7 @@ import { resolveDrug, listCuratedDrugs } from '../drugs.mjs';
 import { diffDrug } from '../diff.mjs';
 import { reportCounts } from '../signal.mjs';
 import { searchLabel } from '../search.mjs';
+import { pool } from '../db.mjs';
 
 const AGE_BRACKETS = ['<18', '18-44', '45-64', '65+', 'unknown'];
 const OUTCOMES = ['DE', 'LT', 'HO', 'DS', 'CA', 'RI', 'OT'];
@@ -101,8 +102,10 @@ export const HANDLERS = {
         outcomes: input.outcomes?.length ? input.outcomes : null, termPattern: input.term_pattern ?? null,
         minCases: input.min_cases ?? 3, limit: 50,
       });
+      const { rows: [q] } = await pool.query(`select string_agg(distinct source_quarter, ', ' order by source_quarter) as quarters from cases`);
       return {
         mode, resolved: d ? { input: input.drug, prod_ai: d.prod_ai, via: d.via } : { drug_class: input.drug_class },
+        quarters: q.quarters,
         filters: { age_bracket: input.age_bracket ?? null, outcomes: input.outcomes ?? null, term_pattern: input.term_pattern ?? null, roles: ['PS', 'SS'] },
         exposed_cases: rows[0]?.exposed_cases ?? 0, filtered_cases: rows[0]?.filtered_cases ?? 0,
         terms: rows.map(r => ({ term: r.reaction_term, cases: r.cases })),
@@ -119,7 +122,7 @@ export const HANDLERS = {
     return {
       resolved: d ? { input: input.drug, prod_ai: d.prod_ai, via: d.via } : { scope: 'all loaded labels' },
       passages: hits.map(h => ({
-        label: h.label_title, section: h.section, section_title: h.section_title, text: h.content,
+        label: h.label_title, label_version: h.label_version, label_date: h.effective_date, section: h.section, section_title: h.section_title, text: h.content,
         found_by: h.vec_rank && h.kw_rank ? 'vector+keyword' : h.kw_rank ? 'keyword' : 'vector', similarity: h.vec_sim,
       })),
     };

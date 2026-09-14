@@ -41,7 +41,7 @@ export async function searchLabel({ query, drugId = null, k = 10, perList = 50 }
       from vec full outer join kw on kw.id = vec.id
     )
     select c.id, c.document_id, c.drug_id, c.section, c.position, c.content,
-           x.title as section_title, l.title as label_title, l.setid,
+           x.title as section_title, l.title as label_title, l.setid, l.version as label_version, l.effective_date,
            f.vec_rank, f.kw_rank, round(f.score::numeric, 5) as score,
            round((1 - f.vec_dist)::numeric, 3) as vec_sim
     from fused f
