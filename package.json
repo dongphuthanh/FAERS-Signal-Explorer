@@ -13,7 +13,7 @@
     "migrate": "node --env-file=.env scripts/migrate.mjs",
     "load:faers": "node --env-file=.env scripts/load-faers.mjs",
     "derive": "node --env-file=.env scripts/derive.mjs",
-    "test": "node --env-file=.env --test",
+    "test": "node --env-file=.env --test --test-concurrency=1",
     "drugs:load": "node --env-file=.env scripts/load-drugs.mjs",
     "labels:fetch": "node --env-file=.env scripts/fetch-dailymed.mjs",
     "labels:ingest": "node --env-file=.env scripts/ingest-dailymed.mjs",

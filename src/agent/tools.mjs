@@ -34,7 +34,7 @@ export const TOOLS = [
         min_cases: { type: 'integer', minimum: 1, description: 'Minimum distinct cases for a term to be listed (default 10 in gap, 3 in counts).' },
         include_excluded: { type: 'boolean', description: 'gap mode: also show administrative/device terms that are normally suppressed.' },
         age_bracket: { type: 'string', enum: AGE_BRACKETS, description: 'counts mode: restrict to one age bracket.' },
-        outcomes: { type: 'array', items: { type: 'string', enum: OUTCOMES }, description: 'counts mode: only cases with at least one of these outcome codes. DE death, LT life-threatening, HO hospitalization, DS disability, CA congenital anomaly, RI required intervention, OT other serious.' },
+        outcomes: { type: 'array', items: { type: 'string', enum: OUTCOMES }, description: 'counts mode: only cases with at least one of these outcome codes. DE death, LT life-threatening, HO hospitalization, DS disability, CA congenital anomaly, RI required intervention, OT other serious. For "deaths" or "fatal" use outcomes ["DE"], not a term_pattern — Death is also a reaction term, and the outcome code is the reliable one.' },
         term_pattern: { type: 'string', description: 'counts mode: case-insensitive regex the reaction term must match, e.g. "hepat|liver" or "rhabdomyolysis|myopathy".' },
       },
       required: [],

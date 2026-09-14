@@ -2,6 +2,10 @@ services:
   db:
     image: pgvector/pgvector:pg16
     container_name: faers-db
+    # Postgres defaults (128MB shared_buffers, 4MB work_mem) are sized for a toy
+    # database. Four quarters of FAERS is ~5 GB; the signal query does a distinct
+    # over millions of rows and spills to disk at 4MB, which made it I/O-bound.
+    command: postgres -c shared_buffers=1GB -c work_mem=256MB -c maintenance_work_mem=512MB -c effective_cache_size=3GB
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}

@@ -14,13 +14,17 @@ test('americanize: MedDRA British spellings become label American spellings', ()
   assert.equal(americanize('Nausea'), 'Nausea');
 });
 
-test('signal: semaglutide 2x2 for impaired gastric emptying matches the methods doc', async () => {
+test('signal: semaglutide 2x2 for impaired gastric emptying, and the ROR follows from the cells', async () => {
   const rows = await disproportionality({ drugId: await drugIdFor('SEMAGLUTIDE'), minCases: 10, limit: 200 });
   const r = rows.find(x => x.reaction_term === 'Impaired gastric emptying');
   assert.ok(r, 'term present');
-  assert.deepEqual([r.a, r.b, r.c, r.d], [1073, 15413, 415, 405494]);
-  assert.equal(r.ror, 68.02);
-  assert.equal(r.ror025, 60.67);
+  // 2025q3–2026q2. On 2026q2 alone the cells were 1073 / 15413 / 415 / 405494 (methods doc).
+  assert.deepEqual([r.a, r.b, r.c, r.d], [3101, 35217, 1588, 1489547]);
+  const ror = (r.a * r.d) / (r.b * r.c);
+  const se = Math.sqrt(1 / r.a + 1 / r.b + 1 / r.c + 1 / r.d);
+  assert.equal(r.ror, +ror.toFixed(2));
+  assert.equal(r.ror025, +Math.exp(Math.log(ror) - 1.96 * se).toFixed(2));
+  assert.equal(r.ror975, +Math.exp(Math.log(ror) + 1.96 * se).toFixed(2));
 });
 
 test('signal: excluded terms are absent unless asked for', async () => {

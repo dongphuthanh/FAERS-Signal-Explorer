@@ -233,5 +233,10 @@
     "term": "Product packaging issue",
     "category": "administrative",
     "reason": "medication or dispensing error, not a clinical event"
+  },
+  {
+    "term": "Product label confusion",
+    "category": "administrative",
+    "reason": "a complaint about the leaflet or packaging, not an event"
   }
 ]

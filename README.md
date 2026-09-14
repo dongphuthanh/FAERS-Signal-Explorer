@@ -10,7 +10,7 @@ That choice follows from what the data is. FAERS is a pile of unverified, volunt
 
 ![The flagship question answered in the browser: three tables — no matching label text, related, described — with counts, reporting odds ratios, and the label sentence for each term](docs/screenshot.png)
 
-*Haiku 4.5 answering the flagship question against FAERS 2026 Q2. Every figure in the answer came from a tool result; the model's contribution is the grouping, the asterisks on efficacy complaints, and the sentences.*
+*Haiku 4.5 answering the flagship question against FAERS 2026 Q2 (one quarter; four are loaded now). Every figure in the answer came from a tool result; the model's contribution is the grouping, the asterisks on efficacy complaints, and the sentences.*
 
 ## What it answers
 
@@ -37,16 +37,16 @@ For ranking, each reaction term gets a 2×2 against all other suspect drugs — 
 
 **The chain.** For each ranked term, the diff asks the label three questions in order. Do the term's *informative* words — rare across the whole label corpus, so *gastric* and *myopathy* count but *product* and *dose* don't — all occur together in one chunk of this drug's label? Then it's **described**, and the sentence carrying the most of those words is quoted. If not, is the nearest chunk by embedding above a similarity threshold? Then **related**, and that chunk is shown. Otherwise **no matching label text** — a statement about the search, never about the drug. British MedDRA spellings are tried in American too, which is how *dysaesthesia* finds *dysesthesia*.
 
-The three-state result for semaglutide, one quarter:
+The three-state result for semaglutide, on one quarter and then on four:
 
-| term | cases | ROR (95%) | label |
+| term | 2026 Q2 only | 2025 Q3 – 2026 Q2 | label |
 |---|---|---|---|
-| Impaired gastric emptying | 1 073 | 68.02 (60.67–76.27) | described — Clinical Pharmacology, *Gastric emptying* |
-| Ileus | 152 | 18.60 (15.06–22.96) | described — Adverse Reactions, postmarketing list |
-| Appetite disorder | 155 | 27.91 (22.18–35.12) | related — *"GLP-1 is a physiological regulator of appetite and caloric intake"*, Clinical Pharmacology |
-| **Optic ischaemic neuropathy** | **196** | **58.83 (45.49–76.08)** | **no matching label text** in Ozempic v20, Wegovy v19, Rybelsus v14 |
+| Impaired gastric emptying | 1 073 cases · ROR025 60.7 | 3 101 · 77.7 | described — Clinical Pharmacology, *Gastric emptying* |
+| Ileus | 152 · 15.1 | 532 · 24.8 | described — Adverse Reactions, postmarketing list |
+| Appetite disorder | 155 · 22.2 | 227 · 15.7 | related — *"GLP-1 is a physiological regulator of appetite and caloric intake"*, Clinical Pharmacology |
+| **Optic ischaemic neuropathy** | **196 · 45.5** | **645 · 91.0** | **no matching label text** in Ozempic v20, Wegovy v19, Rybelsus v14 |
 
-That last row is the kind of output the project exists to produce, stated exactly that narrowly.
+That last row is the kind of output the project exists to produce, stated exactly that narrowly — and the way it moved with four times the data is the behaviour of a reporting pattern, not an artifact.
 
 ## The framing, and where it lives
 
@@ -59,19 +59,23 @@ A report is not evidence of causation. A count is not a rate. This is the single
 
 ## Numbers
 
-Data loaded (FAERS 2026 Q2, DailyMed as of September 2026):
+Data loaded (FAERS 2025 Q3 – 2026 Q2, DailyMed as of September 2026; 4.8 GB in Postgres):
 
 | | |
 |---|---|
-| Cases after version collapse and deletion filter | 422 458 |
-| Drug-on-case rows · reaction rows · outcome rows | 1 324 586 · 1 373 910 · 303 699 |
-| Distinct ingredients | 6 463 (43 curated with labels) |
+| Raw case-version rows | 1 643 483 |
+| Follow-up versions collapsed · FDA-withdrawn cases removed | 109 795 · 4 152 |
+| Cases | 1 529 536 |
+| Drug-on-case rows · reaction rows · outcome rows | 5 661 306 · 4 923 008 · 1 127 292 |
+| Distinct ingredients | 8 632 (43 curated with labels) |
 | Labels · sections · searchable chunks | 47 · 862 · 6 658 |
-| Terms suppressed as medication-error / device / non-event | 47, each with a reason |
+| Terms suppressed as medication-error / device / non-event | 48, each with a reason |
+
+On one quarter the version collapse changed one row and the deletion filter none; on four they changed 114 000. Both were built before they were needed.
 
 Retrieval, measured before any model existed — 31 queries, half of them paraphrases, ground truth verified to exist in the label text: **phrase found in top 5: 100%; MRR 0.909**. ([`evals/retrieval-results.jsonl`](evals/retrieval-results.jsonl))
 
-Agent, 20 mechanically checked questions on Haiku 4.5, before and after one round of fixes: **9/20 → 17/20**, with two of the remaining three failures being the model's and one the check's; **18/20 effective**. First five questions on Opus 5: 5/5, unprompted. ([`evals/agent-results.jsonl`](evals/agent-results.jsonl))
+Agent, 20 mechanically checked questions on Haiku 4.5. On one quarter, before and after one round of fixes: **9/20 → 17/20** (18 effective; one failure was the check). On four quarters: **15/20**, of which one failure was a check pinned to a one-quarter number, one a tool description that has since been clarified, and three the same Haiku habits — label claims without a section citation, "not described in the label" where the rule says "no matching label text", and comparing one statin when asked about the class. First five questions on Opus 5: 5/5, unprompted. ([`evals/agent-results.jsonl`](evals/agent-results.jsonl))
 
 Cost: one flagship question is about 1.5¢ on Haiku and 15–35¢ on Opus, most of that output tokens. A full 20-question eval on Haiku is 24¢ and three minutes.
 
@@ -99,10 +103,14 @@ In the order it happened. Several of these are the reason a number above is what
 
 **Acetaminophen.** Third-highest reporting volume, left out: OTC monograph labels use a different SPL structure. Not reachable from the four questions.
 
+**Default Postgres memory, and a missing VACUUM.** Loading three more quarters turned the four-second signal query into a twenty-minute one. Two causes, found in order: fresh bulk inserts leave the visibility map empty, so the index-only scan over 4.9 million reaction rows became 4.9 million heap fetches until `VACUUM` ran (the derive now vacuums after commit); and Postgres's out-of-the-box `work_mem` of 4 MB made the distinct over 1.5 million cases spill to disk, where it fought with autovacuum for I/O. The container now runs with 1 GB shared buffers and 256 MB work_mem. Tests were also running in parallel processes against the same database; they run serially now.
+
+**Numbers pinned in tests and evals.** Four tests and one eval question hard-coded single-quarter counts and broke on the fifth quarter. Where a relation exists — cases must equal distinct raw case ids minus the deletion list; the newest quarter must survive the collapse whole; the ROR must follow from the four cells — the tests now assert the relation. Where only the number exists, it is pinned with the quarters it belongs to.
+
 ## Known limits
 
-- One quarter loaded. The version collapse changed one row; the deletion filter changed none. Both matter once a second quarter is added, and both are built.
-- The label matcher is a heuristic. It called "Myoglobin blood increased" unmatched when the Crestor label says *myoglobinuria* — different stem. The model caught that one. Three states and a quoted sentence exist so a reader can check any row in seconds.
+- Four quarters loaded. Terms in the ranking that share an identical case count are flagged, not collapsed: cross-manufacturer duplicates are the largest unaddressed data problem.
+- The label matcher is a heuristic. It called "Myoglobin blood increased" unmatched when the Crestor label says *myoglobinuria*, and "Medullary thyroid cancer" only *related* to a boxed warning that says *carcinoma* — different stems. The model caught the first one. Three states and a quoted sentence exist so a reader can check any row in seconds.
 - Haiku still occasionally writes "not in the label" where the rule says "no matching label text." The eval catches it when it does.
 - The exclusion list is 47 terms and deliberately narrow. Efficacy complaints ("Hunger", "Weight loss poor") are shown and marked, not hidden. Whether they belong in a safety review is a clinical judgment.
 - The eval is mechanical: it verifies mode, citation, vocabulary and numbers. It cannot verify clinical judgment. The physician-authored questions and the disagreement log ([`evals/disagreements.md`](evals/disagreements.md)) are the next tranche and are empty.
@@ -114,12 +122,12 @@ Node 20.6+, Docker, ~400 MB of downloads, about ten minutes.
 ```bash
 cp .env.example .env            # add ANTHROPIC_API_KEY only if you want the agent; everything else runs without it
 npm install
-npm run db:up                   # Postgres 16 + pgvector in Docker
+npm run db:up                   # Postgres 16 + pgvector in Docker, 1 GB shared buffers
 npm run migrate                 # migrations/001 … 007
 
 # FAERS: download a quarter to data/faers/<yyyyqN>/ (see the tutorial), then
 npm run load:faers -- 2026q2    # raw_*            ~30 s
-npm run derive                  # cases, case_*    ~45 s
+npm run derive                  # cases, case_*    ~45 s per quarter loaded, then vacuum
 npm run drugs:load              # drugs.json → curated flags, salt-form grouping
 npm run terms:load              # excluded_terms.json
 
@@ -165,7 +173,7 @@ test/            node:test, 44 tests, all runnable without a key
 
 ## Status
 
-Phases 1–6 of the build order in [`CLAUDE.md`](CLAUDE.md) are done, with Phase 2 (RxNorm) reduced to salt-form grouping because `prod_ai` made the rest unnecessary for the curated set. Next, in order of value: load three more quarters and watch the dedupe and deletion steps do real work; the physician-authored eval tranche; near-duplicate detection across manufacturers; Bayesian shrinkage (IC) alongside ROR, which would have pulled the 26-case cluster down the ranking; and a within-class comparator as a parameter on the signal query.
+Phases 1–6 of the build order in [`CLAUDE.md`](CLAUDE.md) are done, with Phase 2 (RxNorm) reduced to salt-form grouping because `prod_ai` made the rest unnecessary for the curated set. Next, in order of value: the physician-authored eval tranche; near-duplicate detection across manufacturers; Bayesian shrinkage (IC) alongside ROR, which would have pulled the 26-case cluster down the ranking; and a within-class comparator as a parameter on the signal query.
 
 ## Documents
 

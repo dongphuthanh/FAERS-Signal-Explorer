@@ -12,7 +12,7 @@ test('semaglutide suspect cases', async () => {
   const { rows } = await pool.query(`
     select count(distinct caseid)::int as n
     from raw_drug
-    where prod_ai = $1 and role_cod = any($2)`, ['SEMAGLUTIDE', ['PS', 'SS']]);
+    where prod_ai = $1 and role_cod = any($2) and source_quarter = $3`, ['SEMAGLUTIDE', ['PS', 'SS'], '2026q2']);
   assert.equal(rows[0].n, 16486);
 });
 
