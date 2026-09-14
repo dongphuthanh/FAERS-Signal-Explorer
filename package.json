@@ -24,7 +24,8 @@
     "diff": "node --env-file=.env scripts/diff.mjs",
     "ask": "node --env-file=.env scripts/ask.mjs",
     "serve": "node --env-file=.env src/server.mjs",
-    "serve:stub": "node --env-file=.env -e \"process.env.STUB=1; import('./src/server.mjs')\""
+    "serve:stub": "node --env-file=.env -e \"process.env.STUB=1; import('./src/server.mjs')\"",
+    "eval:agent": "node --env-file=.env scripts/eval-agent.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

@@ -79,6 +79,8 @@ export const HANDLERS = {
   async query_adverse_events(input) {
     const mode = input.mode ?? 'gap';
     if (mode === 'gap') {
+      const countsOnly = ['age_bracket', 'outcomes', 'term_pattern', 'drug_class'].filter(k => input[k] != null);
+      if (countsOnly.length) throw new Error(`${countsOnly.join(', ')} only apply in mode "counts". Gap mode has no filters; call again with mode "counts" for filtered counts, or drop the filter for the gap analysis.`);
       const d = await needDrug(input.drug, { needLabels: true });
       const r = await diffDrug({ prodAi: d.prod_ai, top: input.top ?? 25, minCases: input.min_cases ?? 10, includeExcluded: !!input.include_excluded });
       // trim to what the model needs; evidence sentences stay, chunk ids go

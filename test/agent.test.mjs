@@ -78,7 +78,7 @@ test('tools: schemas are well-formed and the prompt names every tool', () => {
 });
 
 test('prompt: carries the framing rules', () => {
-  for (const must of ['no denominator', 'never a rate', 'never evidence that the drug causes', 'No matching label text', 'prescriber or pharmacist'])
+  for (const must of ['no denominator', 'never a rate', 'never evidence that the drug causes', 'no matching label text', 'prescriber or pharmacist'])
     assert.ok(SYSTEM_PROMPT.includes(must), `prompt says: ${must}`);
 });
 

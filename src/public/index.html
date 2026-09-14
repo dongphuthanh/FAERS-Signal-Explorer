@@ -21,7 +21,14 @@
   .q { font-weight: 600; margin-bottom: 8px; }
   .ev { font: 12.5px/1.5 ui-monospace, Menlo, Consolas, monospace; color: var(--ink-2); background: var(--paper); border:1px solid var(--rule); border-radius:5px; padding: 8px 12px; margin: 6px 0; white-space: pre-wrap; }
   .ev.err { color: var(--warn); border-color: var(--warn); }
-  .ans { background: var(--paper); border:1px solid var(--rule); border-radius:6px; padding: 14px 18px; margin-top: 8px; white-space: pre-wrap; }
+  .ans { background: var(--paper); border:1px solid var(--rule); border-radius:6px; padding: 4px 18px; margin-top: 8px; }
+  .ans:empty { display:none; }
+  .ans table { border-collapse: collapse; margin: 10px 0; font-size: 14px; }
+  .ans th, .ans td { border-bottom: 1px solid var(--rule); padding: 5px 10px; text-align: left; vertical-align: top; }
+  .ans th { font-size: 12px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; }
+  .ans h2, .ans h3 { font-size: 15px; margin: 16px 0 6px; }
+  .ans p { margin: 8px 0; }
+  .ans hr { border: 0; border-top: 1px solid var(--rule); margin: 14px 0; }
   .meta { font-size: 12px; color: var(--ink-3); margin-top: 6px; }
   .frame { font-size: 12.5px; color: var(--ink-3); border-top: 1px solid var(--rule); margin-top: 40px; padding-top: 12px; }
 </style>
@@ -47,6 +54,7 @@
   <p class="frame">FAERS is a spontaneous reporting system with no denominator. Every number here is a count of reports or a ratio of reporting proportions — never an incidence, a risk, or evidence of causation. "No matching label text" describes our search of the label versions loaded, nothing more. Not for individual medical decisions.</p>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/15.0.7/marked.min.js"></script>
 <script>
   const log = document.getElementById('log'), q = document.getElementById('q'), go = document.getElementById('go');
   document.querySelectorAll('.ex a').forEach(a => a.onclick = () => { q.value = a.dataset.q; q.focus(); });
@@ -61,6 +69,7 @@
     turn.querySelector('.q').textContent = question;
     log.prepend(turn);
     const events = turn.querySelector('.events'), ans = turn.querySelector('.ans'), meta = turn.querySelector('.meta');
+    let raw = ''; const render = () => { ans.innerHTML = marked.parse(raw); };
     const ev = (text, cls = '') => { const d = document.createElement('div'); d.className = 'ev ' + cls; d.textContent = text; events.appendChild(d); };
 
     const res = await fetch('/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question }) });
@@ -72,8 +81,8 @@
         const line = buf.slice(0, i).trim(); buf = buf.slice(i + 2);
         if (!line.startsWith('data: ')) continue;
         const m = JSON.parse(line.slice(6));
-        if (m.type === 'text') ans.textContent += m.text;
-        else if (m.type === 'tool_use') ev(`→ ${m.name} ${JSON.stringify(m.input)}`);
+        if (m.type === 'text') { raw += m.text; render(); }
+        else if (m.type === 'tool_use') { if (raw && !raw.endsWith('\n\n')) { raw += '\n\n'; render(); } ev(`→ ${m.name} ${JSON.stringify(m.input)}`); }
         else if (m.type === 'tool_result') ev(`← ${m.name} ${m.is_error ? 'ERROR ' : ''}${m.ms} ms  ${m.preview.slice(0, 120)}…`, m.is_error ? 'err' : '');
         else if (m.type === 'error') ev(`✗ ${m.message}`, 'err');
         else if (m.type === 'done') meta.textContent = `${m.turns} turn(s) · ${m.usage.input_tokens} in / ${m.usage.output_tokens} out · cache read ${m.usage.cache_read_input_tokens}`;

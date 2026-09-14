@@ -158,5 +158,80 @@
     "term": "Product information content complaint",
     "category": "administrative",
     "reason": "a complaint about the leaflet, not an event"
+  },
+  {
+    "term": "Intercepted product selection error",
+    "category": "administrative",
+    "reason": "medication or dispensing error, not a clinical event"
+  },
+  {
+    "term": "Intercepted product dispensing error",
+    "category": "administrative",
+    "reason": "medication or dispensing error, not a clinical event"
+  },
+  {
+    "term": "Intercepted product prescribing error",
+    "category": "administrative",
+    "reason": "medication or dispensing error, not a clinical event"
+  },
+  {
+    "term": "Intercepted medication error",
+    "category": "administrative",
+    "reason": "medication or dispensing error, not a clinical event"
+  },
+  {
+    "term": "Product selection error",
+    "category": "administrative",
+    "reason": "medication or dispensing error, not a clinical event"
+  },
+  {
+    "term": "Product dispensing error",
+    "category": "administrative",
+    "reason": "medication or dispensing error, not a clinical event"
+  },
+  {
+    "term": "Product prescribing error",
+    "category": "administrative",
+    "reason": "medication or dispensing error, not a clinical event"
+  },
+  {
+    "term": "Incorrect product formulation administered",
+    "category": "administrative",
+    "reason": "medication or dispensing error, not a clinical event"
+  },
+  {
+    "term": "Wrong dose",
+    "category": "administrative",
+    "reason": "medication or dispensing error, not a clinical event"
+  },
+  {
+    "term": "Medication error",
+    "category": "administrative",
+    "reason": "medication or dispensing error, not a clinical event"
+  },
+  {
+    "term": "Off label use of device",
+    "category": "device",
+    "reason": "medication or dispensing error, not a clinical event"
+  },
+  {
+    "term": "Wrong drug administered",
+    "category": "administrative",
+    "reason": "medication or dispensing error, not a clinical event"
+  },
+  {
+    "term": "Incorrect route of product administration",
+    "category": "administrative",
+    "reason": "medication or dispensing error, not a clinical event"
+  },
+  {
+    "term": "Product label issue",
+    "category": "administrative",
+    "reason": "medication or dispensing error, not a clinical event"
+  },
+  {
+    "term": "Product packaging issue",
+    "category": "administrative",
+    "reason": "medication or dispensing error, not a clinical event"
   }
 ]
