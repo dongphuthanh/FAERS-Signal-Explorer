@@ -7,8 +7,11 @@
     "db:up":      "docker compose up -d --wait",
     "db:down":    "docker compose down",
     "db:reset":   "docker compose down -v",
+    "db:psql":    "docker compose exec db psql -U postgres -d faers",
     "migrate":    "node --env-file=.env scripts/migrate.mjs",
-    "load:faers": "node --env-file=.env scripts/load-faers.mjs"
+    "load:faers": "node --env-file=.env scripts/load-faers.mjs",
+    "derive": "node --env-file=.env scripts/derive.mjs",
+    "test":   "node --env-file=.env --test"
   },
   "dependencies": {
     "pg": "^8.13.0"

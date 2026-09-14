@@ -1,0 +1,1 @@
+truncate case_outcomes, case_reactions, case_drugs, cases, drugs restart identity;
