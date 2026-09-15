@@ -22,7 +22,12 @@ if (!process.env.ANTHROPIC_API_KEY) {
 const port = process.env.PORT || 3000;
 await import('../src/server.mjs');   // starts listening on 127.0.0.1:port
 
-const tunnel = spawn('cloudflared', ['tunnel', '--url', `http://127.0.0.1:${port}`], { stdio: ['ignore', 'pipe', 'pipe'] });
+// winget installs here and adds it to PATH, but a shell opened before the
+// install won't see it. Try PATH first, then the known install locations.
+import { existsSync } from 'node:fs';
+const candidates = ['cloudflared', 'C:/Program Files (x86)/cloudflared/cloudflared.exe', 'C:/Program Files/cloudflared/cloudflared.exe'];
+const bin = candidates.find((c, i) => i === 0 ? false : existsSync(c)) ?? 'cloudflared';
+const tunnel = spawn(bin, ['tunnel', '--url', `http://127.0.0.1:${port}`], { stdio: ['ignore', 'pipe', 'pipe'] });
 tunnel.on('error', (err) => {
   console.error(err.code === 'ENOENT'
     ? '\n  cloudflared is not installed. Install it with:  winget install Cloudflare.cloudflared\n  The server is still running locally.\n'

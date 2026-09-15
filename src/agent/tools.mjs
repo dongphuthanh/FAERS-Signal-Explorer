@@ -4,7 +4,7 @@
 // and never computes a statistic — it receives numbers already computed.
 import { resolveDrug, listCuratedDrugs } from '../drugs.mjs';
 import { diffDrug } from '../diff.mjs';
-import { reportCounts } from '../signal.mjs';
+import { reportCounts, compareDrugs } from '../signal.mjs';
 import { searchLabel } from '../search.mjs';
 import { pool } from '../db.mjs';
 
@@ -22,12 +22,17 @@ export const TOOLS = [
       'does not describe" question. ' +
       '"counts": case counts per reaction term for a drug or a drug class, optionally filtered by age bracket, ' +
       'serious-outcome codes, and a regex on the term. Use for "how many", "in patients over 65", "serious", "hepatic events". ' +
+      '"compare": start from a REACTION and compare drugs — for one term pattern, the case count and ROR with interval for each ' +
+      'named drug, or each drug in a class, or (with no drugs given) the drugs with the most disproportionate reporting of it ' +
+      'across the whole database. Use for "which drugs", "compare X across", "is X reported more for A than B". ' +
       'All numbers are counts of distinct FAERS cases naming the drug as a suspect. FAERS has no denominator: ' +
       'nothing here is a rate, a risk, or evidence of causation.',
     input_schema: {
       type: 'object',
       properties: {
-        mode: { type: 'string', enum: ['gap', 'counts'], description: 'gap (default) or counts' },
+        mode: { type: 'string', enum: ['gap', 'counts', 'compare'], description: 'gap (default), counts, or compare' },
+        drugs: { type: 'array', items: { type: 'string' }, maxItems: 20, description: 'compare mode: the drugs to compare, by ingredient or product name. Omit to rank all drugs.' },
+        order: { type: 'string', enum: ['ror025', 'cases'], description: 'compare mode: rank by lower-bound ROR (default) or by case count. With no drugs named, ror025 surfaces small drugs with extreme ratios — often indication confounding — while cases surfaces the big reporters; look at both.' },
         drug: { type: 'string', description: 'Ingredient or product name, e.g. "semaglutide", "Ozempic", "atorvastatin". Required unless drug_class is given.' },
         drug_class: { type: 'string', description: 'counts mode only. A curated class: glp1, statin, anti_tnf, il17, il23, il4_il13, jak, il6, pd1, doac.' },
         top: { type: 'integer', minimum: 1, maximum: 60, description: 'gap mode: how many terms to return (default 25).' },
@@ -35,7 +40,7 @@ export const TOOLS = [
         include_excluded: { type: 'boolean', description: 'gap mode: also show administrative/device terms that are normally suppressed.' },
         age_bracket: { type: 'string', enum: AGE_BRACKETS, description: 'counts mode: restrict to one age bracket.' },
         outcomes: { type: 'array', items: { type: 'string', enum: OUTCOMES }, description: 'counts mode: only cases with at least one of these outcome codes. DE death, LT life-threatening, HO hospitalization, DS disability, CA congenital anomaly, RI required intervention, OT other serious. For "deaths" or "fatal" use outcomes ["DE"], not a term_pattern — Death is also a reaction term, and the outcome code is the reliable one.' },
-        term_pattern: { type: 'string', description: 'counts mode: case-insensitive regex the reaction term must match, e.g. "hepat|liver" or "rhabdomyolysis|myopathy".' },
+        term_pattern: { type: 'string', description: 'counts and compare modes: case-insensitive regex the reaction term must match, e.g. "hepat|liver" or "rhabdomyolysis|myopathy". Required in compare mode.' },
       },
       required: [],
     },
@@ -112,6 +117,32 @@ export const HANDLERS = {
         exposed_cases: rows[0]?.exposed_cases ?? 0, filtered_cases: rows[0]?.filtered_cases ?? 0,
         terms: rows.map(r => ({ term: r.reaction_term, cases: r.cases })),
         note: 'cases = distinct FAERS cases naming a target drug as suspect and matching every filter. Not a rate.',
+      };
+    }
+    if (mode === 'compare') {
+      if (!input.term_pattern) throw new Error('compare mode needs term_pattern (a regex on the reaction term)');
+      const named = [];
+      for (const name of input.drugs ?? []) named.push({ name, resolved: await needDrug(name) });
+      const rows = await compareDrugs({
+        termPattern: input.term_pattern, drugIds: named.length ? named.map(x => x.resolved.id) : null,
+        drugClass: input.drug_class ?? null, minCases: input.min_cases ?? (named.length ? 3 : 10),
+        orderBy: input.order ?? 'ror025', limit: named.length ? 40 : 15,
+      });
+      const { rows: [q] } = await pool.query(`select string_agg(distinct source_quarter, ', ' order by source_quarter) as quarters from cases`);
+      return {
+        mode, term_pattern: input.term_pattern, quarters: q.quarters,
+        resolved: named.map(x => ({ input: x.name, prod_ai: x.resolved.prod_ai, via: x.resolved.via })),
+        scope: named.length ? 'named drugs' : input.drug_class ? `class ${input.drug_class}` : 'all suspect drugs',
+        comparator: 'all other suspect drugs (a 2x2 per drug)',
+        population: rows[0] ? { n: rows[0].n, cases_with_term: rows[0].n_r } : null,
+        rows: rows.map(r => ({ drug: r.prod_ai, drug_class: r.drug_class, cases_with_term: r.a, drug_cases: r.n_d,
+                               pct_of_drug_cases: r.pct_of_drug_cases, ror: r.ror, ror025: r.ror025, ror975: r.ror975,
+                               ...(r.ungrouped_salt_form ? { ungrouped_salt_form: true } : {}) })),
+        notes: [
+          'Each row is its own 2x2 against all other suspect drugs; compare intervals, and say they overlap when they do.',
+          'Rows marked ungrouped_salt_form are one ingredient under different spellings that the data does not group — read them together, not as separate drugs.',
+          'Drugs given to treat the reaction (antiemetics for pancreatitis, enzyme replacement) rank high: this is reporting, not causation.',
+        ],
       };
     }
     throw new Error(`unknown mode ${mode}`);

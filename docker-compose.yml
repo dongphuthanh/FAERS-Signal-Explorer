@@ -6,6 +6,10 @@ services:
     # database. Four quarters of FAERS is ~5 GB; the signal query does a distinct
     # over millions of rows and spills to disk at 4MB, which made it I/O-bound.
     command: postgres -c shared_buffers=1GB -c work_mem=256MB -c maintenance_work_mem=512MB -c effective_cache_size=3GB
+    # parallel workers exchange data through /dev/shm, which Docker caps at 64MB
+    # by default — too small once work_mem is raised ("could not resize shared
+    # memory segment ... No space left on device").
+    shm_size: 1gb
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}

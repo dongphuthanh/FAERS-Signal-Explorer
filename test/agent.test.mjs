@@ -135,4 +135,24 @@ test('search_label: scoped to a brand name, returns passages with provenance', a
   assert.match(r.passages[0].text, /myopathy|muscle/i);
 });
 
+test('query_adverse_events compare: pancreatitis across named diabetes drugs, salt forms grouped', async () => {
+  const r = await HANDLERS.query_adverse_events({ mode: 'compare', term_pattern: 'pancreatitis', drugs: ['Ozempic', 'tirzepatide', 'sitagliptin'] });
+  assert.equal(r.mode, 'compare');
+  assert.equal(r.resolved.length, 3);
+  const by = Object.fromEntries(r.rows.map(x => [x.drug, x]));
+  assert.ok(by.SEMAGLUTIDE && by.TIRZEPATIDE, 'both GLP-1s present');
+  assert.ok(by.SEMAGLUTIDE.ror025 < by.SEMAGLUTIDE.ror && by.SEMAGLUTIDE.ror < by.SEMAGLUTIDE.ror975, 'interval brackets the estimate');
+  // drugs:salts folded SITAGLIPTIN PHOSPHATE under SITAGLIPTIN: one row, no phosphate row, no flag needed
+  assert.ok(by.SITAGLIPTIN && !by['SITAGLIPTIN PHOSPHATE'], 'one sitagliptin row');
+  assert.ok(!by.SITAGLIPTIN.ungrouped_salt_form);
+  assert.ok(by.SITAGLIPTIN.drug_cases > 460, 'the phosphate cases are included');
+  assert.ok(r.notes.length >= 3);
+});
+
+test('query_adverse_events compare: needs a term pattern', async () => {
+  const res = await runTool({ id: 't', name: 'query_adverse_events', input: { mode: 'compare', drugs: ['semaglutide'] } });
+  assert.ok(res.is_error);
+  assert.match(res.content, /term_pattern/);
+});
+
 after(() => pool.end());
