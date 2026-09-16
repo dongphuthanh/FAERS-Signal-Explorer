@@ -51,6 +51,11 @@ try {
   }
   await client.query('commit');
 
+  // the diff reads word frequencies from lexeme_df (migration 008); they describe
+  // the previous corpus until refreshed. The lexemes column maintains itself.
+  await pool.query('refresh materialized view lexeme_df');
+  await pool.query('analyze chunks');
+
   const { rows: [s] } = await pool.query(`
     select count(*)::int as n, round(avg(length(content)))::int as avg_chars, max(length(content))::int as max_chars,
            count(distinct drug_id)::int as drugs from chunks`);

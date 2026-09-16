@@ -21,8 +21,13 @@
 //
 // "none" is a statement about our label text and our retrieval, never about
 // pharmacology. It is rendered as "no matching label text", not "absent".
+//
+// All terms are decided together: one statement for the keyword side of every
+// term, one for the vector side of the terms keyword did not settle. Word
+// frequencies come from the lexeme_df materialized view and each chunk's
+// lexemes column (migration 008), not from per-term queries.
 import { pool } from './db.mjs';
-import { searchLabel } from './search.mjs';
+import { embed, toVectorLiteral } from './embed.mjs';
 import { disproportionality, excludedCount } from './signal.mjs';
 
 export const RELATED_SIM = 0.42;       // cosine; see the report for the calibration
@@ -31,42 +36,6 @@ export const COMMON_WORD_FRAC = 0.05;  // a lexeme in >5% of ALL chunks (every d
 // haemoglobin -> hemoglobin, ischaemic -> ischemic, oedema -> edema, diarrhoea -> diarrhea.
 // 'ae' at the start of a word is left alone (aerosol).
 export const americanize = s => s.replace(/\boe/gi, m => m[0] === 'O' ? 'E' : 'e').replace(/(?<=\w)(ae|oe)/gi, 'e');
-
-// per-lexeme document frequency across ALL chunks, every drug
-async function lexemeStats(term) {
-  const { rows } = await pool.query(`
-    with q as (select unnest(tsvector_to_array(to_tsvector('english', $1))) as lex),
-         n as (select greatest(count(*), 1)::float as total from chunks)
-    select q.lex,
-           (select count(*) from chunks c where tsvector_to_array(c.tsv) @> array[q.lex]) / n.total as frac
-    from q, n`, [term]);
-  return rows.map(r => ({ lex: r.lex, frac: Number(r.frac), informative: Number(r.frac) < COMMON_WORD_FRAC }));
-}
-
-// the chunks of this drug that carry the most of the term's informative words
-async function keywordCoverage(term, drugId, stats, k = 3) {
-  const all = stats.map(s => s.lex);
-  const inf = stats.filter(s => s.informative).map(s => s.lex);
-  if (all.length === 0) return [];
-  const { rows } = await pool.query(`
-    select c.id, c.section, c.document_id, c.content, x.title as section_title, l.title as label_title,
-           cardinality(array(select unnest(tsvector_to_array(c.tsv)) intersect select unnest($2::text[]))) as matched,
-           cardinality(array(select unnest(tsvector_to_array(c.tsv)) intersect select unnest($3::text[]))) as matched_inf
-    from chunks c
-    join label_documents x on x.id = c.document_id
-    join labels l on l.id = x.label_id
-    where c.drug_id = $1 and tsvector_to_array(c.tsv) && $2::text[]
-    order by matched_inf desc, matched desc, c.section = 'adverse_reactions' desc, c.id
-    limit $4`,
-    [drugId, all, inf, k]);
-  return rows.map(r => ({ ...r, total: all.length, total_inf: inf.length }));
-}
-
-function isDescribed(hit) {
-  if (!hit || hit.total_inf === 0) return false;              // nothing rare to match on
-  if (hit.matched_inf < hit.total_inf) return false;           // every informative word must be there
-  return hit.total <= 2 ? hit.matched === hit.total : hit.matched / hit.total >= 2 / 3;
-}
 
 // the sentence in a chunk that carries the most of the term's words, rare words weighing more
 function bestSentence(content, stats) {
@@ -81,33 +50,128 @@ function bestSentence(content, stats) {
   return best.length > 240 ? best.slice(0, 237) + '…' : best;
 }
 
-export async function labelStatus(term, drugId) {
-  // keyword side, both spellings, best wins
-  const variants = [...new Set([term, americanize(term)])];
-  let best = null, bestStats = null;
-  for (const v of variants) {
-    const stats = await lexemeStats(v);
-    const [hit] = await keywordCoverage(v, drugId, stats, 1);
-    if (hit && (!best || hit.matched_inf > best.matched_inf || (hit.matched_inf === best.matched_inf && hit.matched > best.matched))) {
-      best = hit; bestStats = stats;
+// Keyword side for every term in one statement. terms: [{ term_id, term }].
+// Both spellings go over as rows sharing a term_id; the best spelling per
+// term wins. Returns Map term_id -> row (described, counts, best chunk, stats).
+export async function keywordStatuses(terms, drugId) {
+  const ids = [], variants = [], texts = [];
+  for (const t of terms) {
+    for (const v of new Set([t.term, americanize(t.term)])) {
+      ids.push(t.term_id);
+      variants.push(v === t.term ? 'uk' : 'us');
+      texts.push(v);
     }
   }
-  const coverage = best ? `${best.matched_inf}/${best.total_inf} rare, ${best.matched}/${best.total} all` : 'no words matched';
+  const { rows } = await pool.query(`
+    with input(term_id, variant, term) as (
+      select * from unnest($1::int[], $2::text[], $3::text[])
+    ),
+    n as (select count(*)::float as total from chunks),
+    lex as (
+      select i.term_id, i.variant, l.lex,
+             coalesce(d.ndoc, 0) / n.total as frac
+      from input i cross join n
+      cross join lateral unnest(tsvector_to_array(to_tsvector('english', i.term))) as l(lex)
+      left join lexeme_df d on d.lex = l.lex
+    ),
+    agg as (
+      select term_id, variant,
+             array_agg(lex)                                            as all_lex,
+             coalesce(array_agg(lex) filter (where frac < $5), '{}')   as inf_lex,
+             json_agg(json_build_object('lex', lex, 'frac', frac))     as stats
+      from lex group by term_id, variant
+    ),
+    best as (
+      select a.term_id, a.variant, a.stats,
+             cardinality(a.all_lex) as total, cardinality(a.inf_lex) as total_inf,
+             c.id, c.section, c.document_id, c.content, c.section_title, c.label_title,
+             coalesce(c.matched, 0) as matched, coalesce(c.matched_inf, 0) as matched_inf
+      from agg a
+      left join lateral (
+        select c.id, c.section, c.document_id, c.content,
+               x.title as section_title, l.title as label_title,
+               cardinality(array(select unnest(c.lexemes) intersect select unnest(a.all_lex))) as matched,
+               cardinality(array(select unnest(c.lexemes) intersect select unnest(a.inf_lex))) as matched_inf
+        from chunks c
+        join label_documents x on x.id = c.document_id
+        join labels l on l.id = x.label_id
+        where c.drug_id = $4 and c.lexemes && a.all_lex
+        order by 8 desc, 7 desc, c.section = 'adverse_reactions' desc, c.id
+        limit 1
+      ) c on true
+    )
+    select *,
+      (total_inf > 0 and matched_inf = total_inf
+       and (case when total <= 2 then matched = total else matched::float / total >= 2.0 / 3 end)) as described
+    from best order by term_id, variant`,
+    [ids, variants, texts, drugId, COMMON_WORD_FRAC]);
 
-  if (isDescribed(best)) {
-    return { status: 'described', coverage, section: best.section, label: best.label_title,
-             chunk_id: best.id, document_id: best.document_id, evidence: bestSentence(best.content, bestStats) };
+  const byTerm = new Map();
+  for (const r of rows) {
+    const cur = byTerm.get(r.term_id);
+    if (!cur || r.matched_inf > cur.matched_inf
+             || (r.matched_inf === cur.matched_inf && r.matched > cur.matched)) {
+      byTerm.set(r.term_id, r);
+    }
   }
+  return byTerm;
+}
 
-  // vector side
-  const vec = await searchLabel({ query: term, drugId, k: 3 });
-  const nearest = vec.filter(h => h.vec_sim != null).sort((a, b) => b.vec_sim - a.vec_sim)[0];
-  if (nearest && Number(nearest.vec_sim) >= RELATED_SIM) {
-    return { status: 'related', similarity: Number(nearest.vec_sim), coverage, section: nearest.section, label: nearest.label_title,
-             chunk_id: nearest.id, document_id: nearest.document_id,
-             evidence: bestSentence(nearest.content, bestStats ?? []) };
+// Vector side for the terms keyword did not settle: nearest chunk of this
+// drug per term, in one statement. Returns Map term_id -> row with sim.
+export async function vectorStatuses(terms, drugId) {
+  if (terms.length === 0) return new Map();
+
+  // batchSize 1: MiniLM gives a slightly different vector for a text embedded
+  // in a batch than alone, enough to move a similarity by 0.02 either way
+  const vectors = await embed(terms.map(t => t.term), { batchSize: 1 });
+
+  // exact scan over one drug's chunks. The HNSW index finds the nearest
+  // chunks across every drug and filters after, and can be left with none.
+  const { rows } = await pool.query(`
+    with q as (
+      select i as idx, v
+      from unnest($1::vector[]) with ordinality as u(v, i)
+    )
+    select distinct on (q.idx)
+           q.idx, c.id, c.section, c.document_id, c.content,
+           x.title as section_title, l.title as label_title,
+           round((1 - (c.embedding <=> q.v))::numeric, 3) as sim
+    from q cross join chunks c
+    join label_documents x on x.id = c.document_id
+    join labels l on l.id = x.label_id
+    where c.drug_id = $2
+    order by q.idx, c.embedding <=> q.v`,
+    [vectors.map(toVectorLiteral), drugId]);
+
+  return new Map(rows.map(r => [terms[r.idx - 1].term_id, r]));
+}
+
+// The three-state decision for every term. Returns Map term_id -> label object.
+export async function labelStatuses(terms, drugId) {
+  const kw = await keywordStatuses(terms, drugId);
+  const vec = await vectorStatuses(terms.filter(t => !kw.get(t.term_id)?.described), drugId);
+
+  const out = new Map();
+  for (const t of terms) {
+    const k = kw.get(t.term_id), v = vec.get(t.term_id);
+    const coverage = k?.id ? `${k.matched_inf}/${k.total_inf} rare, ${k.matched}/${k.total} all` : 'no words matched';
+    if (k?.described) {
+      out.set(t.term_id, { status: 'described', coverage, section: k.section, label: k.label_title,
+                           chunk_id: k.id, document_id: k.document_id, evidence: bestSentence(k.content, k.stats) });
+    } else if (v && Number(v.sim) >= RELATED_SIM) {
+      out.set(t.term_id, { status: 'related', similarity: Number(v.sim), coverage, section: v.section, label: v.label_title,
+                           chunk_id: v.id, document_id: v.document_id, evidence: bestSentence(v.content, k?.stats ?? []) });
+    } else {
+      out.set(t.term_id, { status: 'none', similarity: v ? Number(v.sim) : null, coverage });
+    }
   }
-  return { status: 'none', similarity: nearest ? Number(nearest.vec_sim) : null, coverage };
+  return out;
+}
+
+// one term, for tests and ad-hoc checks
+export async function labelStatus(term, drugId) {
+  return (await labelStatuses([{ term_id: 0, term }], drugId)).get(0);
 }
 
 export async function diffDrug({ prodAi, top = 25, minCases = 10, includeExcluded = false }) {
@@ -122,8 +186,8 @@ export async function diffDrug({ prodAi, top = 25, minCases = 10, includeExclude
   const signal = await disproportionality({ drugId: drug.id, minCases, limit: top, includeExcluded });
   const excluded = includeExcluded ? 0 : await excludedCount({ drugId: drug.id, minCases });
 
-  const rows = [];
-  for (const s of signal) rows.push({ ...s, label: await labelStatus(s.reaction_term, drug.id) });
+  const statuses = await labelStatuses(signal.map((s, i) => ({ term_id: i, term: s.reaction_term })), drug.id);
+  const rows = signal.map((s, i) => ({ ...s, label: statuses.get(i) }));
 
   const { rows: [q] } = await pool.query(
     `select string_agg(distinct source_quarter, ', ' order by source_quarter) as quarters from cases`);

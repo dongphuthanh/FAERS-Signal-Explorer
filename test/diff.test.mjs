@@ -83,4 +83,13 @@ test('diffDrug: refuses a drug with no labels, and reports excluded count', asyn
   assert.ok(d.rows.every(r => ['described', 'related', 'none'].includes(r.label.status)));
 });
 
+test('diffDrug: the label side is two statements, however many terms', async () => {
+  // drug, labels, signal, excluded count, keyword, vector, quarters = 7. Was 93 for 30 terms.
+  let n = 0;
+  const original = pool.query.bind(pool);
+  pool.query = (...args) => { n++; return original(...args); };
+  try { await diffDrug({ prodAi: 'SEMAGLUTIDE', top: 30 }); } finally { pool.query = original; }
+  assert.ok(n <= 8, `${n} queries for 30 terms`);
+});
+
 after(() => pool.end());
