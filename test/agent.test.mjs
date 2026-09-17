@@ -144,7 +144,6 @@ test('query_adverse_events compare: pancreatitis across named diabetes drugs, sa
   assert.ok(by.SEMAGLUTIDE.ror025 < by.SEMAGLUTIDE.ror && by.SEMAGLUTIDE.ror < by.SEMAGLUTIDE.ror975, 'interval brackets the estimate');
   // drugs:salts folded SITAGLIPTIN PHOSPHATE under SITAGLIPTIN: one row, no phosphate row, no flag needed
   assert.ok(by.SITAGLIPTIN && !by['SITAGLIPTIN PHOSPHATE'], 'one sitagliptin row');
-  assert.ok(!by.SITAGLIPTIN.ungrouped_salt_form);
   assert.ok(by.SITAGLIPTIN.drug_cases > 460, 'the phosphate cases are included');
   assert.ok(r.notes.length >= 3);
 });

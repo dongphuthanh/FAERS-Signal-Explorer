@@ -133,14 +133,13 @@ export const HANDLERS = {
         mode, term_pattern: input.term_pattern, quarters: q.quarters,
         resolved: named.map(x => ({ input: x.name, prod_ai: x.resolved.prod_ai, via: x.resolved.via })),
         scope: named.length ? 'named drugs' : input.drug_class ? `class ${input.drug_class}` : 'all suspect drugs',
-        comparator: 'all other suspect drugs (a 2x2 per drug)',
+        comparator: (rows[0]?.comparator ?? (input.drug_class ? `other ${input.drug_class} drugs` : 'all other suspect drugs')) + ' (a 2x2 per drug)',
         population: rows[0] ? { n: rows[0].n, cases_with_term: rows[0].n_r } : null,
         rows: rows.map(r => ({ drug: r.prod_ai, drug_class: r.drug_class, cases_with_term: r.a, drug_cases: r.n_d,
-                               pct_of_drug_cases: r.pct_of_drug_cases, ror: r.ror, ror025: r.ror025, ror975: r.ror975,
-                               ...(r.ungrouped_salt_form ? { ungrouped_salt_form: true } : {}) })),
+                               pct_of_drug_cases: r.pct_of_drug_cases, ror: r.ror, ror025: r.ror025, ror975: r.ror975 })),
         notes: [
           'Each row is its own 2x2 against all other suspect drugs; compare intervals, and say they overlap when they do.',
-          'Rows marked ungrouped_salt_form are one ingredient under different spellings that the data does not group — read them together, not as separate drugs.',
+          'Salt and hydrate forms are folded into their base ingredient; each row is one ingredient.',
           'Drugs given to treat the reaction (antiemetics for pancreatitis, enzyme replacement) rank high: this is reporting, not causation.',
         ],
       };

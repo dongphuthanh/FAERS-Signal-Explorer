@@ -36,6 +36,26 @@ test('signal: excluded terms are absent unless asked for', async () => {
   assert.ok(off && off.excluded_reason, 'included and marked when asked for');
 });
 
+test('signal: IC follows from the cells, and is shrunk toward zero', async () => {
+  const rows = await disproportionality({ drugId: await drugIdFor('SEMAGLUTIDE'), minCases: 10, limit: 200 });
+  const r = rows.find(x => x.reaction_term === 'Impaired gastric emptying');
+  const expected = r.n_d * (r.a + r.c) / r.n;                       // n_r = a + c
+  assert.equal(r.ic, +Math.log2((r.a + 0.5) / (expected + 0.5)).toFixed(2));
+  assert.equal(r.ic025, 4.66);
+  assert.ok(r.ic025 < r.ic);
+});
+
+test('signal: the class comparator answers target question 4', async () => {
+  const id = await drugIdFor('ROSUVASTATIN');
+  const vsAll   = (await disproportionality({ drugId: id, minCases: 10, limit: 500 })).find(x => x.reaction_term === 'Rhabdomyolysis');
+  const vsClass = (await disproportionality({ drugId: id, minCases: 10, limit: 500, comparator: 'class' })).find(x => x.reaction_term === 'Rhabdomyolysis');
+  assert.equal([vsAll.a, vsAll.b].join(), [vsClass.a, vsClass.b].join(), 'the drug\'s own cells do not depend on the comparator');
+  assert.ok(vsAll.ror > 50, `vs all: ${vsAll.ror}`);
+  assert.ok(vsClass.ror > 1 && vsClass.ror < 2, `vs class: ${vsClass.ror}`);
+  assert.equal(vsClass.comparator, 'other statin drugs');
+  await assert.rejects(disproportionality({ drugId: id, orderBy: 'ror; drop table cases' }), /orderBy/);
+});
+
 test('signal: salt-form aliases count toward the base drug', async () => {
   const id = await drugIdFor('ROSUVASTATIN');
   const rows = await disproportionality({ drugId: id, minCases: 1, limit: 1 });

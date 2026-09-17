@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "stub",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--env-file=.env", "-e", "process.env.STUB=1; process.env.DEMO_PASSWORD=''; process.env.PORT=3011; import('./src/server.mjs')"],
+      "port": 3011
+    },
+    {
+      "name": "live",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--env-file=.env", "-e", "process.env.DEMO_PASSWORD=''; process.env.PORT=3012; import('./src/server.mjs')"],
+      "port": 3012
+    }
+  ]
+}

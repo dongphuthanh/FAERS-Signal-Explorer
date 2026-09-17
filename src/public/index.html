@@ -5,95 +5,268 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FAERS Signal Explorer</title>
 <style>
-  :root { --ink:#131a1e; --ink-2:#4a5761; --ink-3:#7a8790; --rule:#d8dee2; --paper:#fff; --ground:#f4f6f7; --accent:#0e5f68; --wash:#e3f0f1; --warn:#9c4a17; }
+  :root {
+    --ink:#131a1e; --ink-2:#3d4a52; --ink-3:#6b7a84; --rule:#d8dee2; --rule-soft:#e8edf0;
+    --paper:#fff; --ground:#f4f6f7; --accent:#0e5f68; --accent-2:#12808c; --wash:#e3f0f1;
+    --warn:#9c4a17; --warn-wash:#fbeee4; --good:#2f6b45; --good-wash:#e6f0e9; --rel:#8a6d1f; --rel-wash:#faf3dc;
+    --shadow: 0 1px 2px rgba(19,26,30,.06), 0 6px 20px -12px rgba(19,26,30,.25);
+  }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--ground); color:var(--ink); font: 15px/1.55 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
-  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 80px; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  .sub { color: var(--ink-3); font-size: 13px; margin: 0 0 22px; }
-  form { display:flex; gap:8px; }
-  textarea { flex:1; font: inherit; padding: 10px 12px; border:1px solid var(--rule); border-radius:6px; resize: vertical; min-height: 48px; background: var(--paper); }
-  button { font: inherit; padding: 0 18px; border:0; border-radius:6px; background: var(--accent); color:#fff; cursor:pointer; }
-  button:disabled { opacity:.5; cursor: default; }
-  .ex { margin: 10px 0 0; font-size: 13px; color: var(--ink-3); }
-  .ex a { color: var(--accent); cursor: pointer; margin-right: 12px; }
-  .turn { margin-top: 26px; }
-  .q { font-weight: 600; margin-bottom: 8px; }
-  .ev { font: 12.5px/1.5 ui-monospace, Menlo, Consolas, monospace; color: var(--ink-2); background: var(--paper); border:1px solid var(--rule); border-radius:5px; padding: 8px 12px; margin: 6px 0; white-space: pre-wrap; }
-  .ev.err { color: var(--warn); border-color: var(--warn); }
-  .ans { background: var(--paper); border:1px solid var(--rule); border-radius:6px; padding: 4px 18px; margin-top: 8px; }
+  [hidden] { display: none !important; }
+  html { scroll-behavior: smooth; }
+  body { margin:0; background:var(--ground); color:var(--ink); font: 16px/1.6 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 24px 20px 160px; }
+
+  /* header */
+  header { display:flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; }
+  .tag { color: var(--ink-3); font-size: 14px; margin: 2px 0 0; }
+  .btn-ghost { font: 14px inherit; padding: 6px 12px; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); color: var(--ink-2); cursor: pointer; }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* intro: the four kinds of question */
+  .intro { background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 18px 20px 8px; box-shadow: var(--shadow); }
+  .intro h2 { font-size: 15px; margin: 0 0 4px; }
+  .intro .lead { color: var(--ink-3); font-size: 14px; margin: 0 0 14px; }
+  .kinds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .kind { border: 1px solid var(--rule-soft); border-radius: 8px; padding: 12px 14px; background: var(--ground); }
+  .kind b { display:block; font-size: 14px; color: var(--accent); margin-bottom: 2px; }
+  .kind p { margin: 0 0 8px; font-size: 13.5px; color: var(--ink-2); }
+  .kind a { display:block; font-size: 14px; color: var(--ink); text-decoration: none; background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 7px 10px; cursor: pointer; }
+  .kind a:hover { border-color: var(--accent); color: var(--accent); }
+  .kind a::before { content: "→ "; color: var(--accent); }
+  .tips { font-size: 13px; color: var(--ink-3); margin: 14px 0 8px; }
+  .tips li { margin: 2px 0; }
+  @media (max-width: 640px) { .kinds { grid-template-columns: 1fr; } .status, .ans, .ans-foot, .steps { margin-left: 0; } .ans { padding: 6px 14px 10px; } }
+
+  /* conversation */
+  .turn { margin-top: 28px; }
+  .q { display:flex; gap: 10px; align-items: flex-start; }
+  .q .who { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--wash); color: var(--accent); font-size: 12px; font-weight: 700; display:flex; align-items:center; justify-content:center; margin-top: 2px; }
+  .q .text { font-weight: 600; font-size: 16.5px; padding-top: 3px; }
+  .status { display:flex; align-items:center; gap: 10px; margin: 12px 0 0 38px; color: var(--ink-3); font-size: 14px; min-height: 22px; }
+  .status .spin { width: 14px; height: 14px; border: 2px solid var(--rule); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; flex: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .status.err { color: var(--warn); }
+  .ans { margin: 12px 0 0 38px; background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 6px 20px 10px; box-shadow: var(--shadow); }
   .ans:empty { display:none; }
-  .ans table { border-collapse: collapse; margin: 10px 0; font-size: 14px; }
-  .ans th, .ans td { border-bottom: 1px solid var(--rule); padding: 5px 10px; text-align: left; vertical-align: top; }
-  .ans th { font-size: 12px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; }
-  .ans h2, .ans h3 { font-size: 15px; margin: 16px 0 6px; }
-  .ans p { margin: 8px 0; }
-  .ans hr { border: 0; border-top: 1px solid var(--rule); margin: 14px 0; }
-  .meta { font-size: 12px; color: var(--ink-3); margin-top: 6px; }
-  .frame { font-size: 12.5px; color: var(--ink-3); border-top: 1px solid var(--rule); margin-top: 40px; padding-top: 12px; }
+  .ans > :first-child { margin-top: 12px; }
+  .ans h1, .ans h2, .ans h3, .ans h4 { font-size: 15.5px; margin: 20px 0 6px; }
+  .ans p, .ans ul, .ans ol { margin: 8px 0; }
+  .ans li { margin: 3px 0; }
+  .ans hr { border: 0; border-top: 1px solid var(--rule); margin: 16px 0; }
+  .ans code { font-size: 90%; background: var(--ground); padding: 1px 5px; border-radius: 4px; }
+  .ans blockquote { margin: 8px 0; padding: 4px 14px; border-left: 3px solid var(--rule); color: var(--ink-2); }
+  .tbl { overflow-x: auto; margin: 10px -8px; padding: 0 8px; }
+  .ans table { border-collapse: collapse; font-size: 14px; min-width: 100%; }
+  .ans th, .ans td { border-bottom: 1px solid var(--rule-soft); padding: 7px 10px; text-align: left; vertical-align: top; }
+  .ans th { font-size: 11.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; background: var(--ground); position: sticky; top: 0; }
+  .ans tr:last-child td { border-bottom: 0; }
+  .ans td:first-child { font-weight: 500; }
+  .st { display:inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12.5px; white-space: nowrap; }
+  .st-desc { background: var(--good-wash); color: var(--good); }
+  .st-rel  { background: var(--rel-wash);  color: var(--rel); }
+  .st-none { background: var(--warn-wash); color: var(--warn); }
+  .ans-foot { display:flex; gap: 14px; align-items: center; flex-wrap: wrap; margin: 6px 0 0 38px; font-size: 13px; color: var(--ink-3); }
+  .ans-foot button { font: 13px inherit; border: 0; background: none; color: var(--accent); cursor: pointer; padding: 2px 0; }
+  .ans-foot details { display: inline; }
+  .ans-foot summary { cursor: pointer; color: var(--ink-3); list-style: none; display: inline; }
+  .ans-foot summary::-webkit-details-marker { display:none; }
+  .ans-foot summary:hover { color: var(--accent); }
+  .steps { margin: 8px 0 0 38px; font-size: 13.5px; color: var(--ink-2); background: var(--paper); border: 1px solid var(--rule-soft); border-radius: 8px; padding: 8px 14px; }
+  .steps div { padding: 4px 0; border-bottom: 1px solid var(--rule-soft); display:flex; gap: 8px; }
+  .steps div:last-child { border-bottom: 0; }
+  .steps .n { color: var(--ink-3); flex: none; width: 18px; }
+  .steps .ms { color: var(--ink-3); margin-left: auto; flex: none; }
+  .steps .bad { color: var(--warn); }
+  .steps .fine { color: var(--ink-3); font-size: 12.5px; }
+
+  /* composer */
+  .composer { position: fixed; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, var(--ground) 70%, transparent); padding: 18px 20px 20px; }
+  .composer .in { max-width: 900px; margin: 0 auto; background: var(--paper); border: 1px solid var(--rule); border-radius: 12px; box-shadow: var(--shadow); display:flex; align-items: flex-end; gap: 8px; padding: 8px 8px 8px 14px; }
+  .composer .in:focus-within { border-color: var(--accent-2); }
+  textarea { flex:1; font: inherit; line-height: 1.5; padding: 8px 0; border: 0; outline: 0; resize: none; min-height: 40px; max-height: 200px; background: transparent; }
+  .send { font: 15px/1 inherit; font-weight: 600; padding: 11px 18px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; flex: none; }
+  .send:hover { background: var(--accent-2); }
+  .send:disabled { opacity: .55; cursor: default; }
+  .send.stop { background: var(--warn); }
+  .hint { max-width: 900px; margin: 6px auto 0; font-size: 12px; color: var(--ink-3); padding: 0 6px; }
+
+  .frame { font-size: 13px; color: var(--ink-3); border-top: 1px solid var(--rule); margin-top: 44px; padding-top: 12px; }
+  @media print { .composer, .intro, .ans-foot, .status { display: none !important; } .wrap { padding-bottom: 0; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>FAERS Signal Explorer</h1>
-  <p class="sub">What is being reported, and does the label address it. Reports, not rates; reporting ratios, not risks.</p>
+  <header>
+    <div>
+      <h1>FAERS Signal Explorer</h1>
+      <p class="tag">What is being reported to FDA, and does the prescribing label address it.</p>
+    </div>
+    <button class="btn-ghost" id="reset" hidden>New conversation</button>
+  </header>
 
-  <form id="f">
-    <textarea id="q" placeholder="What's being reported for semaglutide that isn't in the label?"></textarea>
-    <button id="go" type="submit">Ask</button>
-  </form>
-  <p class="ex">
-    <a data-q="What's being reported for semaglutide that isn't in the label?">semaglutide gap</a>
-    <a data-q="Serious hepatic events reported for statins in patients over 65.">statins, hepatic, 65+</a>
-    <a data-q="What does the atorvastatin label say about muscle symptoms?">atorvastatin label, muscle</a>
-    <a data-q="Is the rhabdomyolysis signal for rosuvastatin different from the other statins?">rhabdo across statins</a>
-  </p>
+  <section class="intro" id="intro">
+    <h2>Four kinds of question</h2>
+    <p class="lead">Click an example to run it, or type your own below. Use the ingredient name (semaglutide) or a brand name (Ozempic).</p>
+    <div class="kinds">
+      <div class="kind">
+        <b>Gap — what the label doesn't describe</b>
+        <p>The main question. Reactions reported disproportionately for one drug, each checked against its label.</p>
+        <a data-q="What's being reported for semaglutide that isn't in the label?">What's being reported for semaglutide that isn't in the label?</a>
+      </div>
+      <div class="kind">
+        <b>Counts — how many, with filters</b>
+        <p>Case counts by age, serious outcome, or a kind of reaction, for a drug or a class.</p>
+        <a data-q="Serious hepatic events reported for statins in patients over 65.">Serious hepatic events reported for statins in patients over 65.</a>
+      </div>
+      <div class="kind">
+        <b>Label — what the prescribing information says</b>
+        <p>Search the label text itself, with the section quoted.</p>
+        <a data-q="What does the atorvastatin label say about muscle symptoms?">What does the atorvastatin label say about muscle symptoms?</a>
+      </div>
+      <div class="kind">
+        <b>Compare — one reaction across drugs</b>
+        <p>Start from a reaction and compare named drugs, a class, or the whole database.</p>
+        <a data-q="Compare pancreatitis reporting across semaglutide, sitagliptin and metformin.">Compare pancreatitis reporting across semaglutide, sitagliptin and metformin.</a>
+      </div>
+    </div>
+    <ul class="tips">
+      <li>Follow-up questions work: after an answer, try “and for tirzepatide?” or “only in patients under 45”.</li>
+      <li>If a drug “isn't in the database”, check the spelling first — <i>Janumet</i>, not <i>Janumed</i>.</li>
+      <li>Answers take 10–40 seconds; the line under your question shows what is being looked up.</li>
+    </ul>
+  </section>
 
   <div id="log"></div>
 
-  <p class="frame">FAERS is a spontaneous reporting system with no denominator. Every number here is a count of reports or a ratio of reporting proportions — never an incidence, a risk, or evidence of causation. "No matching label text" describes our search of the label versions loaded, nothing more. Not for individual medical decisions.</p>
+  <p class="frame">FAERS is a spontaneous reporting system with no denominator. Every number here is a count of reports or a ratio of reporting proportions — never an incidence, a risk, or evidence of causation. “No matching label text” describes our search of the label versions loaded, nothing more. Not for individual medical decisions.</p>
+</div>
+
+<div class="composer">
+  <form class="in" id="f">
+    <textarea id="q" rows="1" placeholder="Ask about a drug or a reaction…" autofocus></textarea>
+    <button class="send" id="go" type="submit">Ask</button>
+  </form>
+  <p class="hint">Enter to ask · Shift+Enter for a new line</p>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/15.0.7/marked.min.js"></script>
 <script>
   const log = document.getElementById('log'), q = document.getElementById('q'), go = document.getElementById('go');
-  document.querySelectorAll('.ex a').forEach(a => a.onclick = () => { q.value = a.dataset.q; q.focus(); });
+  const intro = document.getElementById('intro'), reset = document.getElementById('reset');
+  let history = [];          // prior turns sent back so follow-ups have context
+  let abort = null;          // AbortController while a question is running
 
-  document.getElementById('f').onsubmit = async (e) => {
-    e.preventDefault();
-    const question = q.value.trim(); if (!question) return;
-    go.disabled = true;
+  // ---- composer behaviour ----
+  const grow = () => { q.style.height = 'auto'; q.style.height = Math.min(q.scrollHeight, 200) + 'px'; };
+  q.addEventListener('input', grow);
+  q.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.keyCode === 13) && !e.shiftKey) { e.preventDefault(); document.getElementById('f').requestSubmit(); } });
+  document.querySelectorAll('.kind a').forEach(a => a.onclick = () => ask(a.dataset.q));
+  reset.onclick = () => { history = []; log.innerHTML = ''; intro.hidden = false; reset.hidden = true; q.focus(); };
+  document.getElementById('f').onsubmit = e => { e.preventDefault(); if (abort) { abort.abort(); return; } ask(q.value.trim()); };
+
+  // ---- plain-language description of what the model is doing ----
+  function describe(name, input) {
+    if (name === 'search_label') return input.drug ? `Reading the ${input.drug} label for “${input.query}”` : `Searching every loaded label for “${input.query}”`;
+    const mode = input.mode ?? 'gap';
+    if (mode === 'gap') return `Ranking what is reported for ${input.drug} and checking each term against its label`;
+    if (mode === 'counts') {
+      const who = input.drug ?? `the ${input.drug_class} class`, f = [];
+      if (input.age_bracket) f.push(`age ${input.age_bracket}`);
+      if (input.outcomes?.length) f.push(`outcomes ${input.outcomes.join('/')}`);
+      if (input.term_pattern) f.push(`terms matching “${input.term_pattern}”`);
+      return `Counting FAERS cases for ${who}${f.length ? ' — ' + f.join(', ') : ''}`;
+    }
+    if (mode === 'compare') return `Comparing “${input.term_pattern}” across ${input.drugs?.length ? input.drugs.join(', ') : input.drug_class ? `the ${input.drug_class} class` : 'all drugs'}`;
+    return name;
+  }
+
+  // ---- markdown -> HTML, with tables made scrollable and label statuses coloured ----
+  function render(el, md) {
+    el.innerHTML = marked.parse(md);
+    el.querySelectorAll('table').forEach(tb => {
+      if (tb.parentElement.classList.contains('tbl')) return;
+      const w = document.createElement('div'); w.className = 'tbl'; tb.replaceWith(w); w.appendChild(tb);
+    });
+    el.querySelectorAll('td').forEach(td => {
+      const s = td.textContent.trim().toLowerCase();
+      const cls = /^(described|described in label)$/.test(s) ? 'st-desc' : /^related/.test(s) ? 'st-rel' : /^(none|no matching label text.*)$/.test(s) ? 'st-none' : null;
+      if (cls && td.textContent.length < 60) td.innerHTML = `<span class="st ${cls}">${td.textContent.trim()}</span>`;
+    });
+  }
+
+  async function ask(question) {
+    if (!question || abort) return;
+    q.value = ''; grow();
+    intro.hidden = true; reset.hidden = false;
 
     const turn = document.createElement('div'); turn.className = 'turn';
-    turn.innerHTML = `<div class="q"></div><div class="events"></div><div class="ans"></div><div class="meta"></div>`;
-    turn.querySelector('.q').textContent = question;
-    log.prepend(turn);
-    const events = turn.querySelector('.events'), ans = turn.querySelector('.ans'), meta = turn.querySelector('.meta');
-    let raw = ''; const render = () => { ans.innerHTML = marked.parse(raw); };
-    const ev = (text, cls = '') => { const d = document.createElement('div'); d.className = 'ev ' + cls; d.textContent = text; events.appendChild(d); };
+    turn.innerHTML = `<div class="q"><div class="who">Q</div><div class="text"></div></div>
+      <div class="status"><span class="spin"></span><span class="msg">Thinking…</span></div>
+      <div class="ans"></div>
+      <div class="ans-foot" hidden><button class="copy">Copy answer</button><details><summary>How this was answered ▾</summary></details><span class="meta"></span></div>
+      <div class="steps" hidden></div>`;
+    turn.querySelector('.text').textContent = question;
+    log.appendChild(turn);
+    turn.scrollIntoView({ block: 'start' });
 
-    const res = await fetch('/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question }) });
-    if (!res.ok) {   // 429 daily cap, 401 password, 400 — plain JSON, not a stream
-      let msg = `${res.status} ${res.statusText}`; try { msg = (await res.json()).error ?? msg; } catch {}
-      ev(`✗ ${msg}`, 'err'); go.disabled = false; return;
-    }
-    const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
-    while (true) {
-      const { value, done } = await reader.read(); if (done) break;
-      buf += dec.decode(value, { stream: true });
-      let i; while ((i = buf.indexOf('\n\n')) >= 0) {
-        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 2);
-        if (!line.startsWith('data: ')) continue;
-        const m = JSON.parse(line.slice(6));
-        if (m.type === 'text') { raw += m.text; render(); }
-        else if (m.type === 'tool_use') { if (raw && !raw.endsWith('\n\n')) { raw += '\n\n'; render(); } ev(`→ ${m.name} ${JSON.stringify(m.input)}`); }
-        else if (m.type === 'tool_result') ev(`← ${m.name} ${m.is_error ? 'ERROR ' : ''}${m.ms} ms  ${m.preview.slice(0, 120)}…`, m.is_error ? 'err' : '');
-        else if (m.type === 'error') ev(`✗ ${m.message}`, 'err');
-        else if (m.type === 'done') meta.textContent = `${m.turns} turn(s) · ${m.usage.input_tokens} in / ${m.usage.output_tokens} out · cache read ${m.usage.cache_read_input_tokens}`;
+    const status = turn.querySelector('.status'), msg = turn.querySelector('.msg'), ans = turn.querySelector('.ans');
+    const foot = turn.querySelector('.ans-foot'), steps = turn.querySelector('.steps'), meta = turn.querySelector('.meta');
+    let raw = '', stepN = 0, pending = null;
+    const step = (text, cls = '') => { const d = document.createElement('div'); d.innerHTML = `<span class="n">${++stepN}.</span><span class="${cls}"></span><span class="ms"></span>`; d.children[1].textContent = text; steps.appendChild(d); return d; };
+    const fail = (text) => { status.classList.add('err'); status.querySelector('.spin')?.remove(); msg.textContent = text; };
+    const nearBottom = () => window.innerHeight + window.scrollY >= document.body.offsetHeight - 240;
+
+    go.textContent = 'Stop'; go.classList.add('stop'); abort = new AbortController();
+    try {
+      const res = await fetch('/ask', { method: 'POST', headers: { 'content-type': 'application/json' },
+                                        body: JSON.stringify({ question, history }), signal: abort.signal });
+      if (!res.ok) {
+        let m = `${res.status} ${res.statusText}`; try { m = (await res.json()).error ?? m; } catch {}
+        if (res.status === 401) m = 'Password required — reload the page and sign in.';
+        if (res.status === 429) m = 'Today’s question limit is used up. It resets at midnight UTC.';
+        fail(m); return;
       }
+      const reader = res.body.getReader(), dec = new TextDecoder(); let buf = '';
+      while (true) {
+        const { value, done } = await reader.read(); if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i; while ((i = buf.indexOf('\n\n')) >= 0) {
+          const line = buf.slice(0, i).trim(); buf = buf.slice(i + 2);
+          if (!line.startsWith('data: ')) continue;
+          const m = JSON.parse(line.slice(6));
+          if (m.type === 'text') {
+            raw += m.text; render(ans, raw); msg.textContent = 'Writing the answer…';
+            if (nearBottom()) window.scrollTo(0, document.body.scrollHeight);
+          } else if (m.type === 'tool_use') {
+            if (raw && !raw.endsWith('\n\n')) { raw += '\n\n'; render(ans, raw); }
+            const text = describe(m.name, m.input); msg.textContent = text + '…'; pending = step(text);
+          } else if (m.type === 'tool_result') {
+            if (pending) { pending.querySelector('.ms').textContent = (m.ms / 1000).toFixed(1) + ' s'; if (m.is_error) { pending.children[1].classList.add('bad'); pending.children[1].textContent += ` — ${m.preview.slice(0, 160)}`; } pending = null; }
+          } else if (m.type === 'error') {
+            fail(m.message); step(m.message, 'bad');
+          } else if (m.type === 'done') {
+            status.remove();
+            meta.textContent = `${m.turns} step${m.turns === 1 ? '' : 's'} · ${m.usage.input_tokens + m.usage.output_tokens} tokens`;
+            history = [...history, { role: 'user', content: question }, { role: 'assistant', content: raw }].slice(-6);
+          }
+        }
+      }
+      if (!raw && !status.classList.contains('err')) fail('No answer was produced.');
+    } catch (err) {
+      if (err.name === 'AbortError') { fail('Stopped.'); if (raw) history = [...history, { role: 'user', content: question }, { role: 'assistant', content: raw }].slice(-6); }
+      else fail(`Connection problem: ${err.message}`);
+    } finally {
+      abort = null; go.textContent = 'Ask'; go.classList.remove('stop');
+      if (raw) {
+        foot.hidden = false;
+        turn.querySelector('.copy').onclick = async (e) => { try { await navigator.clipboard.writeText(raw); e.target.textContent = 'Copied'; setTimeout(() => e.target.textContent = 'Copy answer', 1500); } catch {} };
+        turn.querySelector('details').ontoggle = (e) => { steps.hidden = !e.target.open; };
+      } else if (steps.children.length) { steps.hidden = false; }
+      q.focus();
     }
-    go.disabled = false;
-  };
+  }
 </script>
 </body>
 </html>
