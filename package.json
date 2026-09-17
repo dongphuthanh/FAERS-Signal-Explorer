@@ -28,7 +28,9 @@
     "eval:agent": "node --env-file=.env scripts/eval-agent.mjs",
     "serve:public": "node --env-file=.env scripts/serve-public.mjs",
     "sessions": "node scripts/sessions.mjs",
-    "drugs:salts": "node --env-file=.env scripts/group-salts.mjs"
+    "drugs:salts": "node --env-file=.env scripts/group-salts.mjs",
+    "graph:load": "node --env-file=.env scripts/load-graph.mjs",
+    "eval:regimen": "node --env-file=.env scripts/eval-regimen.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

@@ -29,6 +29,9 @@
   .intro h2 { font-size: 15px; margin: 0 0 4px; }
   .intro .lead { color: var(--ink-3); font-size: 14px; margin: 0 0 14px; }
   .kinds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .kind.regimen { grid-column: 1 / -1; }
+  .kind .bound { margin: 10px 0 0; font-size: 13px; color: var(--warn); }
+  .kind .bound b { display: inline; color: var(--warn); font-size: 13px; margin: 0; }
   .kind { border: 1px solid var(--rule-soft); border-radius: 8px; padding: 12px 14px; background: var(--ground); }
   .kind b { display:block; font-size: 14px; color: var(--accent); margin-bottom: 2px; }
   .kind p { margin: 0 0 8px; font-size: 13.5px; color: var(--ink-2); }
@@ -130,6 +133,12 @@
         <p>Start from a reaction and compare named drugs, a class, or the whole database.</p>
         <a data-q="Compare pancreatitis reporting across semaglutide, sitagliptin and metformin.">Compare pancreatitis reporting across semaglutide, sitagliptin and metformin.</a>
       </div>
+      <div class="kind regimen">
+        <b>Regimen — several drugs together</b>
+        <p>Interaction pathways between the drugs, what their labels say, and what FAERS reports for the pairs. A few flags, ranked; the rest on request.</p>
+        <a data-q="Characterize this combination: simvastatin, clarithromycin, amlodipine, metformin, lisinopril.">Characterize this combination: simvastatin, clarithromycin, amlodipine, metformin, lisinopril.</a>
+        <p class="bound"><b>A combination of drugs, not a patient.</b> No age, weight, kidney or liver function, indication or history is used or accepted. Whether a flag matters for a particular person is a clinician's judgment.</p>
+      </div>
     </div>
     <ul class="tips">
       <li>Follow-up questions work: after an answer, try “and for tirzepatide?” or “only in patients under 45”.</li>
@@ -169,6 +178,7 @@
   // ---- plain-language description of what the model is doing ----
   function describe(name, input) {
     if (name === 'search_label') return input.drug ? `Reading the ${input.drug} label for “${input.query}”` : `Searching every loaded label for “${input.query}”`;
+    if (name === 'analyze_regimen') return `Characterizing the combination ${input.drugs.join(', ')} — pathways, labels, co-reporting`;
     const mode = input.mode ?? 'gap';
     if (mode === 'gap') return `Ranking what is reported for ${input.drug} and checking each term against its label`;
     if (mode === 'counts') {

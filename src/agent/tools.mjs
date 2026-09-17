@@ -7,6 +7,7 @@ import { diffDrug } from '../diff.mjs';
 import { reportCounts, compareDrugs } from '../signal.mjs';
 import { searchLabel } from '../search.mjs';
 import { pool } from '../db.mjs';
+import { analyzeRegimen } from '../regimen.mjs';
 
 const AGE_BRACKETS = ['<18', '18-44', '45-64', '65+', 'unknown'];
 const OUTCOMES = ['DE', 'LT', 'HO', 'DS', 'CA', 'RI', 'OT'];
@@ -61,6 +62,27 @@ export const TOOLS = [
         k: { type: 'integer', minimum: 1, maximum: 15, description: 'How many passages (default 6).' },
       },
       required: ['query'],
+    },
+  },
+  {
+    name: 'analyze_regimen',
+    description:
+      'Characterize a SET of drugs given together (2-12 names). Three layers: (1) interaction pathways in the loaded ' +
+      'graph — a drug that inhibits or induces an enzyme or transporter another drug in the set depends on, and drugs ' +
+      'converging on one effect such as QT prolongation, bleeding or hyperkalaemia — collapsed to one flag per pathway ' +
+      'and ranked by severity and by how many drugs in the set compound it; (2) what the labels in the set say about ' +
+      'each flag; (3) reactions reported to FAERS for a pair more often than the separate reporting of the two drugs predicts ' +
+      '(Ω), shown as corroboration of a pathway. At most five flags by default; show_all lists the rest. ' +
+      'This describes a combination of drugs, never a patient: it accepts no age, weight, organ function, indication or ' +
+      'history, and a drug the graph has no edges for is reported as unknown, not as safe.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        drugs: { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 12, description: 'Ingredient or product names. Combination products are expanded to their ingredients.' },
+        show_all: { type: 'boolean', description: 'Also list flags below the default threshold and co-reported pairs with no pathway.' },
+      },
+      required: ['drugs'],
+      additionalProperties: false,
     },
   },
 ];
@@ -145,6 +167,34 @@ export const HANDLERS = {
       };
     }
     throw new Error(`unknown mode ${mode}`);
+  },
+
+  async analyze_regimen(input) {
+    const extra = Object.keys(input).filter(k => !['drugs', 'show_all'].includes(k));
+    if (extra.length) throw new Error(`analyze_regimen takes drugs and show_all only; ${extra.join(', ')} cannot be used. It characterizes a combination of drugs, not a patient.`);
+    const r = await analyzeRegimen({ drugs: input.drugs, showAll: !!input.show_all });
+    return {
+      boundary: r.boundary,
+      resolved: r.resolved.map(m => ({ input: m.input, prod_ai: m.prod_ai, via: m.via, label_loaded: m.has_labels, from_combination: m.from_combination })),
+      unresolved: r.unresolved,
+      graph_unknown: r.graph_unknown,
+      quarters: r.quarters,
+      flags: r.flags.map(f => ({
+        layer: f.layer, severity: f.severity, score: f.score, mechanism: f.mechanism, mechanism_kind: f.mechanism_kind,
+        victim: f.victim, participants: f.participants, compounding: f.compounding, sources: f.sources,
+        what: f.why,
+        reported: f.reported.map(r => ({ ...r,
+          summary: `${r.observed} cases mentioning both ${r.pair[0]} and ${r.pair[1]} (any role, de-duplicated) reported "${r.term}"; ${r.expected} expected from each drug's own reporting — ${(r.observed / Math.max(r.expected, 0.5)).toFixed(1)}× more, Ω lower bound ${r.omega025}. Co-reporting, not causation.` })),
+        labels: f.labels, no_label_loaded: f.no_label_loaded,
+      })),
+      suppressed: r.suppressed,
+      policy: r.policy,
+      notes: [
+        'Pathway flags come from the loaded interaction graph (FDA CYP/transporter categories and pharmacodynamic classes, hand-seeded). A drug listed in graph_unknown has no edges: the graph knows nothing about it, which is not the same as no interaction.',
+        'reported = FAERS cases mentioning both drugs (any role, de-duplicated) reporting the term, against the count expected from each drug alone (Ω, lower bound omega025). Co-reporting, not causation; drugs given together often share an indication.',
+        'labels: described / related / none per drug in the set that has a label loaded; no_label_loaded lists drugs whose label is not in the database — a gap, not a finding.',
+      ],
+    };
   },
 
   async search_label(input) {

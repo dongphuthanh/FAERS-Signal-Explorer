@@ -16,7 +16,7 @@ import { pool } from '../src/db.mjs';
 const SALT_WORDS = new Set(`
   HYDROCHLORIDE DIHYDROCHLORIDE HYDROBROMIDE BROMIDE CHLORIDE IODIDE
   SODIUM DISODIUM POTASSIUM CALCIUM MAGNESIUM ZINC LITHIUM ALUMINUM
-  PHOSPHATE DIPHOSPHATE SULFATE SULPHATE BISULFATE MESYLATE MESILATE BESYLATE TOSYLATE
+  PHOSPHATE DIPHOSPHATE SULFATE SULPHATE BISULFATE BISULPHATE MESYLATE MESILATE BESYLATE BESILATE TOSYLATE TOSILATE
   MALEATE FUMARATE SUCCINATE TARTRATE BITARTRATE CITRATE LACTATE GLUCONATE ACETATE
   NITRATE BENZOATE PAMOATE DECANOATE VALERATE PROPIONATE DIPROPIONATE FUROATE XINAFOATE
   HYCLATE ESTOLATE STEARATE OXALATE MALATE SALICYLATE CAPROATE ENANTHATE CYPIONATE PIVALATE
@@ -28,6 +28,7 @@ const { rows: drugs } = await pool.query(`select id, prod_ai, canonical_id, cura
 const byName = new Map(drugs.map(d => [d.prod_ai, d]));
 
 const plan = [];
+const orphans = {};                                    // base name -> salt rows with no base row
 for (const d of drugs) {
   if (d.canonical_id) continue;                        // already grouped (drugs.json aliases)
   if (d.curated) continue;                             // curated rows are bases: they carry the labels
@@ -39,6 +40,9 @@ for (const d of drugs) {
     if (SALT_WORDS.has(baseName)) break;               // "CALCIUM ACETATE" must not become "CALCIUM"
     const base = byName.get(baseName);
     if (base && base.id !== d.id) { plan.push({ from: d.prod_ai, to: base.canonical_id ? byName.get([...byName.values()].find(x => x.id === base.canonical_id)?.prod_ai)?.prod_ai ?? base.prod_ai : base.prod_ai, id: d.id, baseId: base.canonical_id ?? base.id }); break; }
+    // no base row at all (only salt forms were ever reported, e.g. CLOPIDOGREL BISULFATE / BESILATE):
+    // remember the family; a base row is created below so every spelling has one home
+    if (!base && strip === 1 && !baseName.split(' ').every(w => SALT_WORDS.has(w)) && !SALT_WORDS.has(baseName.split(' ').at(-1))) { (orphans[baseName] ??= []).push(d); break; }
   }
 }
 
@@ -46,7 +50,17 @@ const client = await pool.connect();
 try {
   await client.query('begin');
   for (const p of plan) await client.query(`update drugs set canonical_id = $2 where id = $1 and canonical_id is null`, [p.id, p.baseId]);
+  // salt families with no base: create the base row (it has no reports of its own; the salts carry them)
+  let created = 0;
+  for (const [baseName, forms] of Object.entries(orphans)) {
+    if (forms.length < 2 && !/PHOSPHATE|HYDROCHLORIDE|SULFATE|BISULFATE|SODIUM|CALCIUM|MESYLATE|MALEATE|SUCCINATE|TARTRATE/.test(forms[0].prod_ai)) continue;
+    const { rows: [b] } = await client.query(
+      `insert into drugs (prod_ai, is_combination) values ($1, false) on conflict (prod_ai) do update set prod_ai = excluded.prod_ai returning id`, [baseName]);
+    for (const f of forms) { await client.query(`update drugs set canonical_id = $2 where id = $1 and canonical_id is null`, [f.id, b.id]); plan.push({ from: f.prod_ai, to: baseName, id: f.id, baseId: b.id }); }
+    created++;
+  }
   await client.query('commit');
+  if (created) console.log(`  ${created} base rows created for salt families that had none (e.g. ${Object.keys(orphans).slice(0, 3).join(', ')})`);
 } catch (e) { await client.query('rollback'); throw e; } finally { client.release(); }
 
 const { rows: [s] } = await pool.query(`

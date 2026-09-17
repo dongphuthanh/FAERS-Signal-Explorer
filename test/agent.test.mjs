@@ -36,13 +36,13 @@ test('loop: tool_use -> run tool -> tool_result -> final text, with events in or
   assert.equal(usage.input_tokens, 200);
 });
 
-test('loop: every request carries the frozen system prompt and both tools', async () => {
+test('loop: every request carries the frozen system prompt and all three tools', async () => {
   const stub = makeStub([{ text: 'hi' }]);
   await runAgent({ messages: [{ role: 'user', content: 'hello' }], client: stub });
   const params = stub.seen[0];
   assert.equal(params.system[0].text, SYSTEM_PROMPT);
   assert.deepEqual(params.system[0].cache_control, { type: 'ephemeral' });
-  assert.deepEqual(params.tools.map(t => t.name), ['query_adverse_events', 'search_label']);
+  assert.deepEqual(params.tools.map(t => t.name), ['query_adverse_events', 'search_label', 'analyze_regimen']);
 });
 
 test('loop: a failing tool is returned as is_error, not thrown, and the model gets another turn', async () => {

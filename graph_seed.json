@@ -1,0 +1,69 @@
+{
+  "_about": "Starter interaction graph, hand-seeded from the categories in FDA's 'Drug Development and Drug Interactions: Table of Substrates, Inhibitors and Inducers' (clinical index and example tables), CredibleMeds QT risk categories, and standard pharmacodynamic classes. Each edge names its source. This is a seed for building and testing the traversal; scripts/load-graph.mjs replaces or extends it with parsed sources. Strength grades follow FDA: strong >=5x AUC of a sensitive substrate, moderate 2-5x, weak 1.25-2x; sensitive substrate >=5x AUC with a strong inhibitor, moderate_sensitive 2-5x; narrow_ti = FDA narrow-therapeutic-index list.",
+  "mechanisms": [
+    { "kind": "enzyme", "name": "CYP3A4" },
+    { "kind": "enzyme", "name": "CYP2C9" },
+    { "kind": "enzyme", "name": "CYP2C19" },
+    { "kind": "enzyme", "name": "CYP2D6" },
+    { "kind": "transporter", "name": "P-gp" },
+    { "kind": "effect", "name": "QT prolongation" },
+    { "kind": "effect", "name": "serotonergic activity" },
+    { "kind": "effect", "name": "bleeding" },
+    { "kind": "effect", "name": "hyperkalaemia" },
+    { "kind": "effect", "name": "CNS depression" },
+    { "kind": "effect", "name": "myopathy" }
+  ],
+  "pairs": [
+    { "source": "seed:fda_label", "evidence": "established", "severity": "major", "drugs": ["CLOPIDOGREL", "OMEPRAZOLE"],
+      "description": "Plavix label, Warnings and Precautions 5.1: avoid concomitant use of omeprazole or esomeprazole; CYP2C19 inhibition reduces the active metabolite and platelet inhibition." }
+  ],
+  "edges": [
+    { "source": "seed:fda_cyp", "evidence": "established", "target": "CYP3A4", "type": "inhibits", "strength": "strong",   "drugs": ["CLARITHROMYCIN", "ITRACONAZOLE", "KETOCONAZOLE", "RITONAVIR"] },
+    { "source": "seed:fda_cyp", "evidence": "established", "target": "CYP3A4", "type": "inhibits", "strength": "moderate", "drugs": ["ERYTHROMYCIN", "FLUCONAZOLE", "DILTIAZEM", "VERAPAMIL"] },
+    { "source": "seed:fda_cyp", "evidence": "established", "target": "CYP3A4", "type": "inhibits", "strength": "weak",     "drugs": ["AMLODIPINE", "TICAGRELOR"] },
+    { "source": "seed:fda_cyp", "evidence": "established", "target": "CYP3A4", "type": "induces",  "strength": "strong",   "drugs": ["RIFAMPIN", "CARBAMAZEPINE", "PHENYTOIN", "HYPERICUM PERFORATUM", "ENZALUTAMIDE", "APALUTAMIDE"] },
+    { "source": "seed:fda_cyp", "evidence": "established", "target": "CYP3A4", "type": "substrate_of", "strength": "sensitive",          "drugs": ["SIMVASTATIN", "LOVASTATIN", "MIDAZOLAM", "SILDENAFIL", "QUETIAPINE"] },
+    { "source": "seed:fda_cyp", "evidence": "established", "target": "CYP3A4", "type": "substrate_of", "strength": "narrow_ti",          "drugs": ["CYCLOSPORINE", "TACROLIMUS", "FENTANYL"] },
+    { "source": "seed:fda_cyp", "evidence": "established", "target": "CYP3A4", "type": "substrate_of", "strength": "moderate_sensitive", "drugs": ["ATORVASTATIN", "APIXABAN", "RIVAROXABAN", "OXYCODONE", "ALPRAZOLAM", "COLCHICINE"] },
+
+    { "source": "seed:fda_cyp", "evidence": "established", "target": "CYP2C9", "type": "inhibits", "strength": "moderate", "drugs": ["FLUCONAZOLE", "AMIODARONE"] },
+    { "source": "seed:fda_cyp", "evidence": "established", "target": "CYP2C9", "type": "induces",  "strength": "moderate", "drugs": ["RIFAMPIN", "ENZALUTAMIDE", "CARBAMAZEPINE"] },
+    { "source": "seed:fda_cyp", "evidence": "established", "target": "CYP2C9", "type": "substrate_of", "strength": "narrow_ti", "drugs": ["WARFARIN", "PHENYTOIN"] },
+
+    { "source": "seed:fda_cyp", "evidence": "established", "target": "CYP2C19", "type": "inhibits", "strength": "strong",   "drugs": ["FLUCONAZOLE"] },
+    { "source": "seed:fda_cyp", "evidence": "established", "target": "CYP2C19", "type": "inhibits", "strength": "moderate", "drugs": ["OMEPRAZOLE"] },
+    { "source": "seed:fda_cyp", "evidence": "established", "target": "CYP2C19", "type": "induces",  "strength": "strong",   "drugs": ["RIFAMPIN"] },
+    { "source": "seed:fda_cyp", "evidence": "established", "target": "CYP2C19", "type": "substrate_of", "strength": "moderate_sensitive", "drugs": ["CLOPIDOGREL", "CITALOPRAM", "ESCITALOPRAM"],
+      "description": "clopidogrel is a prodrug activated by CYP2C19: inhibition lowers the active metabolite rather than raising exposure" },
+
+    { "source": "seed:fda_cyp", "evidence": "established", "target": "CYP2D6", "type": "inhibits", "strength": "strong", "drugs": ["PAROXETINE", "FLUOXETINE", "BUPROPION"] },
+    { "source": "seed:fda_cyp", "evidence": "established", "target": "CYP2D6", "type": "substrate_of", "strength": "sensitive",          "drugs": ["VENLAFAXINE"] },
+    { "source": "seed:fda_cyp", "evidence": "established", "target": "CYP2D6", "type": "substrate_of", "strength": "moderate_sensitive", "drugs": ["METOPROLOL", "CODEINE", "TRAMADOL", "OXYCODONE"],
+      "description": "codeine and tramadol are activated by CYP2D6: inhibition reduces the active metabolite" },
+
+    { "source": "seed:fda_transporter", "evidence": "established", "target": "P-gp", "type": "inhibits", "strength": "moderate", "drugs": ["VERAPAMIL", "AMIODARONE", "CLARITHROMYCIN", "RITONAVIR", "ITRACONAZOLE", "KETOCONAZOLE"] },
+    { "source": "seed:fda_transporter", "evidence": "established", "target": "P-gp", "type": "induces",  "strength": "moderate", "drugs": ["RIFAMPIN", "HYPERICUM PERFORATUM"] },
+    { "source": "seed:fda_transporter", "evidence": "established", "target": "P-gp", "type": "substrate_of", "strength": "narrow_ti", "drugs": ["DIGOXIN", "COLCHICINE"] },
+    { "source": "seed:fda_transporter", "evidence": "established", "target": "P-gp", "type": "substrate_of", "strength": "sensitive",  "drugs": ["DABIGATRAN ETEXILATE"] },
+
+    { "source": "seed:crediblemeds", "evidence": "established", "target": "QT prolongation", "type": "contributes_to", "strength": "strong",   "drugs": ["AMIODARONE", "SOTALOL", "METHADONE"] },
+    { "source": "seed:crediblemeds", "evidence": "established", "target": "QT prolongation", "type": "contributes_to", "strength": "moderate", "drugs": ["HALOPERIDOL", "ONDANSETRON", "CITALOPRAM", "CLARITHROMYCIN", "ERYTHROMYCIN", "LEVOFLOXACIN", "MOXIFLOXACIN", "DOMPERIDONE", "FLUCONAZOLE"] },
+    { "source": "seed:crediblemeds", "evidence": "probable",    "target": "QT prolongation", "type": "contributes_to", "strength": "weak",     "drugs": ["ESCITALOPRAM", "AZITHROMYCIN", "QUETIAPINE"] },
+
+    { "source": "seed:pharmacodynamic", "evidence": "established", "target": "serotonergic activity", "type": "contributes_to", "strength": "strong",   "drugs": ["LINEZOLID"] },
+    { "source": "seed:pharmacodynamic", "evidence": "established", "target": "serotonergic activity", "type": "contributes_to", "strength": "moderate", "drugs": ["FLUOXETINE", "PAROXETINE", "CITALOPRAM", "ESCITALOPRAM", "SERTRALINE", "VENLAFAXINE", "DULOXETINE", "TRAMADOL"] },
+    { "source": "seed:pharmacodynamic", "evidence": "probable",    "target": "serotonergic activity", "type": "contributes_to", "strength": "weak",     "drugs": ["SUMATRIPTAN", "METHADONE", "FENTANYL", "ONDANSETRON"] },
+
+    { "source": "seed:pharmacodynamic", "evidence": "established", "target": "bleeding", "type": "contributes_to", "strength": "strong",   "drugs": ["WARFARIN", "APIXABAN", "RIVAROXABAN", "DABIGATRAN ETEXILATE", "CLOPIDOGREL", "TICAGRELOR"] },
+    { "source": "seed:pharmacodynamic", "evidence": "established", "target": "bleeding", "type": "contributes_to", "strength": "moderate", "drugs": ["ASPIRIN", "IBUPROFEN", "NAPROXEN"] },
+    { "source": "seed:pharmacodynamic", "evidence": "probable",    "target": "bleeding", "type": "contributes_to", "strength": "weak",     "drugs": ["FLUOXETINE", "PAROXETINE", "CITALOPRAM", "ESCITALOPRAM", "SERTRALINE", "VENLAFAXINE", "DULOXETINE"] },
+
+    { "source": "seed:pharmacodynamic", "evidence": "established", "target": "hyperkalaemia", "type": "contributes_to", "strength": "strong",   "drugs": ["SPIRONOLACTONE", "POTASSIUM CHLORIDE"] },
+    { "source": "seed:pharmacodynamic", "evidence": "established", "target": "hyperkalaemia", "type": "contributes_to", "strength": "moderate", "drugs": ["LISINOPRIL", "LOSARTAN", "TRIMETHOPRIM"] },
+
+    { "source": "seed:pharmacodynamic", "evidence": "established", "target": "CNS depression", "type": "contributes_to", "strength": "strong",   "drugs": ["OXYCODONE", "MORPHINE", "FENTANYL", "METHADONE", "ALPRAZOLAM", "DIAZEPAM", "LORAZEPAM", "MIDAZOLAM"] },
+    { "source": "seed:pharmacodynamic", "evidence": "established", "target": "CNS depression", "type": "contributes_to", "strength": "moderate", "drugs": ["CODEINE", "TRAMADOL", "GABAPENTIN", "QUETIAPINE"] },
+
+    { "source": "seed:pharmacodynamic", "evidence": "established", "target": "myopathy", "type": "contributes_to", "strength": "moderate", "drugs": ["SIMVASTATIN", "ATORVASTATIN", "ROSUVASTATIN", "LOVASTATIN", "COLCHICINE"] }
+  ]
+}
