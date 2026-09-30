@@ -456,5 +456,319 @@
         "match": "TABLET"
       }
     ]
+  },
+  {
+    "prod_ai": "CLARITHROMYCIN",
+    "class": null,
+    "labels": [
+      {
+        "search": "CLARITHROMYCIN",
+        "match": "TABLET"
+      }
+    ]
+  },
+  {
+    "prod_ai": "AZITHROMYCIN",
+    "class": null,
+    "labels": [
+      {
+        "search": "ZITHROMAX",
+        "labeler": "PFIZER"
+      }
+    ]
+  },
+  {
+    "prod_ai": "CEPHALEXIN",
+    "class": null,
+    "labels": [
+      {
+        "search": "CEPHALEXIN",
+        "match": "CAPSULE"
+      }
+    ]
+  },
+  {
+    "prod_ai": "AMOXICILLIN",
+    "class": null,
+    "labels": [
+      {
+        "search": "AMOXICILLIN",
+        "match": "CAPSULE",
+        "exclude": "CLAVULANATE"
+      }
+    ]
+  },
+  {
+    "prod_ai": "CIPROFLOXACIN",
+    "class": null,
+    "labels": [
+      {
+        "search": "CIPROFLOXACIN",
+        "match": "TABLET",
+        "exclude": "OTIC"
+      }
+    ]
+  },
+  {
+    "prod_ai": "DOXYCYCLINE",
+    "class": null,
+    "labels": [
+      {
+        "search": "DOXYCYCLINE HYCLATE",
+        "match": "TABLET"
+      }
+    ]
+  },
+  {
+    "prod_ai": "FLUCONAZOLE",
+    "class": null,
+    "labels": [
+      {
+        "search": "DIFLUCAN"
+      }
+    ]
+  },
+  {
+    "prod_ai": "WARFARIN",
+    "class": null,
+    "labels": [
+      {
+        "search": "WARFARIN SODIUM",
+        "match": "TABLET"
+      }
+    ]
+  },
+  {
+    "prod_ai": "CLOPIDOGREL",
+    "class": null,
+    "labels": [
+      {
+        "search": "PLAVIX",
+        "labeler": "SANOFI"
+      }
+    ]
+  },
+  {
+    "prod_ai": "AMLODIPINE",
+    "class": null,
+    "labels": [
+      {
+        "search": "NORVASC"
+      }
+    ]
+  },
+  {
+    "prod_ai": "LISINOPRIL",
+    "class": null,
+    "labels": [
+      {
+        "search": "LISINOPRIL",
+        "match": "TABLET",
+        "exclude": "HYDROCHLOROTHIAZIDE"
+      }
+    ]
+  },
+  {
+    "prod_ai": "LOSARTAN",
+    "class": null,
+    "labels": [
+      {
+        "search": "LOSARTAN POTASSIUM",
+        "match": "TABLET",
+        "exclude": "HYDROCHLOROTHIAZIDE"
+      }
+    ]
+  },
+  {
+    "prod_ai": "METOPROLOL",
+    "class": null,
+    "labels": [
+      {
+        "search": "METOPROLOL TARTRATE",
+        "match": "TABLET",
+        "exclude": "HYDROCHLOROTHIAZIDE"
+      },
+      {
+        "search": "METOPROLOL SUCCINATE",
+        "match": "EXTENDED",
+        "exclude": "HYDROCHLOROTHIAZIDE"
+      }
+    ]
+  },
+  {
+    "prod_ai": "DIGOXIN",
+    "class": null,
+    "labels": [
+      {
+        "search": "DIGOXIN",
+        "match": "TABLET"
+      }
+    ]
+  },
+  {
+    "prod_ai": "AMIODARONE",
+    "class": null,
+    "labels": [
+      {
+        "search": "AMIODARONE HYDROCHLORIDE",
+        "match": "TABLET"
+      }
+    ]
+  },
+  {
+    "prod_ai": "DILTIAZEM",
+    "class": null,
+    "labels": [
+      {
+        "search": "DILTIAZEM HYDROCHLORIDE",
+        "match": "CAPSULE"
+      }
+    ]
+  },
+  {
+    "prod_ai": "SPIRONOLACTONE",
+    "class": null,
+    "labels": [
+      {
+        "search": "SPIRONOLACTONE",
+        "match": "TABLET",
+        "exclude": "HYDROCHLOROTHIAZIDE"
+      }
+    ]
+  },
+  {
+    "prod_ai": "FUROSEMIDE",
+    "class": null,
+    "labels": [
+      {
+        "search": "FUROSEMIDE",
+        "match": "TABLET"
+      }
+    ]
+  },
+  {
+    "prod_ai": "SERTRALINE",
+    "class": null,
+    "labels": [
+      {
+        "search": "SERTRALINE HYDROCHLORIDE",
+        "match": "TABLET"
+      }
+    ]
+  },
+  {
+    "prod_ai": "CITALOPRAM",
+    "class": null,
+    "labels": [
+      {
+        "search": "CITALOPRAM",
+        "match": "TABLET"
+      }
+    ]
+  },
+  {
+    "prod_ai": "FLUOXETINE",
+    "class": null,
+    "labels": [
+      {
+        "search": "FLUOXETINE",
+        "match": "CAPSULE",
+        "exclude": "OLANZAPINE"
+      }
+    ]
+  },
+  {
+    "prod_ai": "TRAMADOL",
+    "class": null,
+    "labels": [
+      {
+        "search": "TRAMADOL HYDROCHLORIDE",
+        "match": "TABLET",
+        "exclude": "ACETAMINOPHEN"
+      }
+    ]
+  },
+  {
+    "prod_ai": "OXYCODONE",
+    "class": null,
+    "labels": [
+      {
+        "search": "OXYCODONE HYDROCHLORIDE",
+        "match": "TABLET",
+        "exclude": "ACETAMINOPHEN"
+      }
+    ]
+  },
+  {
+    "prod_ai": "GABAPENTIN",
+    "class": null,
+    "labels": [
+      {
+        "search": "GABAPENTIN",
+        "match": "CAPSULE"
+      }
+    ]
+  },
+  {
+    "prod_ai": "QUETIAPINE",
+    "class": null,
+    "labels": [
+      {
+        "search": "SEROQUEL",
+        "labeler": "ASTRAZENECA",
+        "exclude": "XR"
+      }
+    ]
+  },
+  {
+    "prod_ai": "ALPRAZOLAM",
+    "class": null,
+    "labels": [
+      {
+        "search": "ALPRAZOLAM",
+        "match": "TABLET"
+      }
+    ]
+  },
+  {
+    "prod_ai": "ONDANSETRON",
+    "class": null,
+    "labels": [
+      {
+        "search": "ONDANSETRON",
+        "match": "TABLET"
+      }
+    ]
+  },
+  {
+    "prod_ai": "OMEPRAZOLE",
+    "class": null,
+    "labels": [
+      {
+        "search": "OMEPRAZOLE",
+        "match": "CAPSULE, DELAYED RELEASE",
+        "exclude": "SODIUM BICARBONATE"
+      }
+    ]
+  },
+  {
+    "prod_ai": "LEVOTHYROXINE",
+    "class": null,
+    "labels": [
+      {
+        "search": "SYNTHROID",
+        "labeler": "ABBVIE"
+      }
+    ]
+  },
+  {
+    "prod_ai": "SITAGLIPTIN",
+    "class": null,
+    "labels": [
+      {
+        "search": "JANUVIA",
+        "labeler": "MERCK"
+      }
+    ]
   }
 ]

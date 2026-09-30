@@ -5,6 +5,7 @@
 import { readFile } from 'node:fs/promises';
 import { parseSpl } from '../src/spl/parse.mjs';
 import { pool } from '../src/db.mjs';
+import { refreshCommonStatements } from '../src/label-common.mjs';
 
 const manifest = JSON.parse(await readFile('data/dailymed/manifest.json', 'utf8'));
 
@@ -52,8 +53,16 @@ try {
     console.log(`  ${m.prod_ai.padEnd(28)} v${String(meta.version).padEnd(3)} ${String(sections.length).padStart(3)} sections${flag.length ? '   missing: ' + flag.join(', ') : ''}`);
   }
 
+  // a label no longer in the manifest was replaced (a re-fetch picked a newer
+  // version or a different labeler): remove it, or the drug ends up with two.
+  // label_documents and chunks go with it (on delete cascade).
+  const { rowCount: pruned } = await client.query(
+    `delete from labels where not (setid = any($1))`, [manifest.map(m => m.setid)]);
+  if (pruned) console.log(`  removed ${pruned} label(s) no longer in the manifest`);
   await client.query('commit');
   console.log(`\n  ${nLabels} labels · ${nDocs} sections · ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+  const common = await refreshCommonStatements(pool);
+  console.log(`  ${common.found} of ${common.labels} labels state their most common adverse reactions in one sentence`);
   if (problems.length) {
     console.log(`  problems:`);
     for (const p of problems) console.log(`    ${p}`);

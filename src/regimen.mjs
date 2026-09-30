@@ -14,8 +14,10 @@ import { readFile } from 'node:fs/promises';
 import { pool } from './db.mjs';
 import { resolveDrug } from './drugs.mjs';
 import { labelStatuses } from './diff.mjs';
+import { terms as arTerms, threshold as arThreshold } from './spl/common-ar.mjs';
 
 const PATHS_SQL = await readFile(new URL('../sql/regimen/paths.sql', import.meta.url), 'utf8');
+const CURATED = JSON.parse(await readFile(new URL('../drugs.json', import.meta.url), 'utf8'));
 const OMEGA_SQL = await readFile(new URL('../sql/regimen/omega.sql', import.meta.url), 'utf8');
 
 // the policy. Numbers are first guesses; evals/regimens.jsonl is what moves them.
@@ -43,6 +45,149 @@ const EXPECTED_TERMS = {
   'CYP2D6': /toxicity|drug ineffective|drug level|bradycardia/i,
   'P-gp': /toxicity|drug level increased|overdose/i,
 };
+
+// ---- label cross-check: does one drug's label name the other? ----
+// Read only the sections where labels state interactions and restrictions.
+const MENTION_SECTIONS = ['boxed_warning', 'contraindications', 'warnings_precautions', 'warnings', 'precautions', 'drug_interactions'];
+const SECTION_RANK = Object.fromEntries(MENTION_SECTIONS.map((x, i) => [x, i]));
+// How labels usually name another drug's class in an interaction statement.
+const CLASS_TERMS = {
+  CLARITHROMYCIN: ['macrolide'], AZITHROMYCIN: ['macrolide'], CEPHALEXIN: ['cephalosporin'],
+  AMOXICILLIN: ['penicillin'], CIPROFLOXACIN: ['fluoroquinolone', 'quinolone'], DOXYCYCLINE: ['tetracycline'],
+  FLUCONAZOLE: ['azole antifungal'], WARFARIN: ['anticoagulant', 'vitamin K antagonist'], APIXABAN: ['anticoagulant'],
+  RIVAROXABAN: ['anticoagulant'], CLOPIDOGREL: ['antiplatelet', 'P2Y12'], ASPIRIN: ['antiplatelet', 'NSAID'],
+  IBUPROFEN: ['NSAID'], NAPROXEN: ['NSAID'], AMLODIPINE: ['calcium channel blocker'], DILTIAZEM: ['calcium channel blocker'],
+  LISINOPRIL: ['ACE inhibitor'], LOSARTAN: ['angiotensin receptor blocker', 'ARB'], METOPROLOL: ['beta-blocker', 'beta blocker'],
+  SPIRONOLACTONE: ['potassium-sparing diuretic'], FUROSEMIDE: ['loop diuretic'], DIGOXIN: ['digitalis', 'cardiac glycoside'],
+  AMIODARONE: ['antiarrhythmic'], SERTRALINE: ['SSRI', 'selective serotonin reuptake inhibitor'],
+  CITALOPRAM: ['SSRI', 'selective serotonin reuptake inhibitor'], FLUOXETINE: ['SSRI', 'selective serotonin reuptake inhibitor'],
+  TRAMADOL: ['opioid'], OXYCODONE: ['opioid'], ALPRAZOLAM: ['benzodiazepine'], QUETIAPINE: ['antipsychotic'],
+  ONDANSETRON: ['5-HT3'], OMEPRAZOLE: ['proton pump inhibitor', 'PPI'], SITAGLIPTIN: ['DPP-4'],
+  'METFORMIN HYDROCHLORIDE': ['biguanide'], 'INSULIN GLARGINE': ['insulin'],
+  ATORVASTATIN: ['statin', 'HMG-CoA reductase inhibitor'], SIMVASTATIN: ['statin', 'HMG-CoA reductase inhibitor'],
+  ROSUVASTATIN: ['statin', 'HMG-CoA reductase inhibitor'], PRAVASTATIN: ['statin', 'HMG-CoA reductase inhibitor'],
+  LOVASTATIN: ['statin', 'HMG-CoA reductase inhibitor'], 'FLUVASTATIN SODIUM': ['statin', 'HMG-CoA reductase inhibitor'],
+  PITAVASTATIN: ['statin', 'HMG-CoA reductase inhibitor'], SEMAGLUTIDE: ['GLP-1'], TIRZEPATIDE: ['GLP-1'],
+  LIRAGLUTIDE: ['GLP-1'], DULAGLUTIDE: ['GLP-1'], EXENATIDE: ['GLP-1'], TACROLIMUS: ['calcineurin inhibitor'],
+  PREDNISONE: ['corticosteroid'], DEXAMETHASONE: ['corticosteroid'],
+};
+// therapeutic classes labels use for whole groups ("antidiabetic agents", "CNS depressants")
+const GROUP_TERMS = [
+  [['antidiabetic', 'hypoglycemic agent'], ['METFORMIN HYDROCHLORIDE', 'SITAGLIPTIN', 'INSULIN GLARGINE', 'SEMAGLUTIDE', 'TIRZEPATIDE', 'LIRAGLUTIDE', 'DULAGLUTIDE', 'EXENATIDE']],
+  [['antihypertensive'], ['AMLODIPINE', 'DILTIAZEM', 'LISINOPRIL', 'LOSARTAN', 'METOPROLOL', 'SPIRONOLACTONE', 'FUROSEMIDE']],
+  [['diuretic'], ['SPIRONOLACTONE', 'FUROSEMIDE']],
+  [['antidepressant'], ['SERTRALINE', 'CITALOPRAM', 'FLUOXETINE']],
+  [['CNS depressant'], ['TRAMADOL', 'OXYCODONE', 'ALPRAZOLAM', 'GABAPENTIN', 'QUETIAPINE']],
+];
+for (const [terms, drugs] of GROUP_TERMS) for (const d of drugs) CLASS_TERMS[d] = [...(CLASS_TERMS[d] ?? []), ...terms];
+const SALT_WORDS = new Set('HYDROCHLORIDE SODIUM POTASSIUM CALCIUM MAGNESIUM ACETATE PHOSPHATE BISULFATE MESYLATE BESYLATE MALEATE TARTRATE SUCCINATE FUMARATE HYCLATE MONOHYDRATE'.split(' '));
+const esc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// ingredient name, brand names from drugs.json, and class words
+function mentionTerms(prodAi) {
+  const words = prodAi.split(' ');
+  while (words.length > 1 && SALT_WORDS.has(words.at(-1)) && !SALT_WORDS.has(words[0])) words.pop();
+  const generic = words.join(' ').replace(/-[A-Z]{4}$/, '').toLowerCase();
+  const names = new Set([generic]);
+  for (const l of CURATED.find(e => e.prod_ai === prodAi)?.labels ?? []) {
+    const b = l.search.toLowerCase();
+    if (!b.includes(generic)) names.add(b);          // a brand, not the generic spelled again
+  }
+  return { names: [...names], classes: (CLASS_TERMS[prodAi] ?? []).map(c => c.toLowerCase()) };
+}
+
+// For every pair, in both directions: does A's label name B (ingredient, brand, or class)
+// in the sections where labels state interactions? Quotes the first such sentence.
+async function labelCrossCheck(members) {
+  const withLabels = members.filter(m => m.has_labels);
+  const { rows: docs } = withLabels.length ? await pool.query(
+    `select drug_id, section, content from label_documents where drug_id = any($1) and section = any($2)`,
+    [withLabels.map(m => m.id), MENTION_SECTIONS]) : { rows: [] };
+  const mentions = [], without = [], oneSided = [], unchecked = [];
+  for (let i = 0; i < members.length; i++) for (let j = i + 1; j < members.length; j++) {
+    const pair = [members[i], members[j]];
+    const found = [];
+    let checked = 0;
+    for (const [a, b] of [[pair[0], pair[1]], [pair[1], pair[0]]]) {
+      if (!a.has_labels) continue;
+      checked++;
+      const tb = mentionTerms(b.prod_ai), ta = mentionTerms(a.prod_ai);
+      const sameClass = tb.classes.some(c => ta.classes.includes(c));   // a statin label saying "statins" is about itself
+      const byName = new RegExp(`\\b(${tb.names.map(esc).join('|')})\\b`, 'i');
+      const byClass = !sameClass && tb.classes.length ? new RegExp(`\\b(${tb.classes.map(esc).join('|')})s?\\b`, 'i') : null;
+      const ordered = docs.filter(x => x.drug_id === a.id).sort((x, y) => SECTION_RANK[x.section] - SECTION_RANK[y.section]);
+      let hit = null;
+      for (const d of ordered) {
+        const parts = d.content.split(/(?<=[.!?])\s+|\n+/).map(x => x.trim()).filter(Boolean);
+        const matches = [];
+        parts.forEach((sentence, k) => {
+          const m = sentence.match(byName) ?? (byClass ? sentence.match(byClass) : null);
+          if (m) matches.push({ k, m, sentence });
+        });
+        if (!matches.length) continue;
+        // a match inside a real sentence beats a heading or a table cell ("Simvastatin")
+        // "4.5 Lomitapide, Lovastatin, and Simvastatin" is a heading: quote the sentence under it
+        const heading = x => x.sentence.length < 40 || (/^\d+(\.\d+)*\s/.test(x.sentence) && x.sentence.length < 90);
+        const pick = matches.find(x => !heading(x)) ?? matches[0];
+        let text = pick.sentence;
+        if (heading(pick) && parts[pick.k + 1]) text = `${text}: ${parts[pick.k + 1]}`;
+        hit = { label_of: a.prod_ai, names: b.prod_ai, matched: pick.m[0], by: byName.test(pick.sentence) ? 'name' : 'class',
+                section: d.section, sentence: text.length > 300 ? text.slice(0, 297) + '…' : text };
+        break;
+      }
+      if (hit) found.push(hit);
+    }
+    const names = pair.map(m => m.prod_ai);
+    if (!checked) unchecked.push(names);
+    else if (found.length) mentions.push(...found);
+    else (checked === 2 ? without : oneSided).push(names);
+  }
+  // names before classes, then by section (boxed warning, contraindications, … drug interactions)
+  mentions.sort((x, y) => (x.by === 'name' ? 0 : 1) - (y.by === 'name' ? 0 : 1) || SECTION_RANK[x.section] - SECTION_RANK[y.section]);
+  return {
+    sections_read: MENTION_SECTIONS,
+    mentions: mentions.slice(0, 12), mentions_total: mentions.length,
+    pairs_neither_label_mentions_the_other: without,
+    pairs_checked_one_way_only: oneSided,          // only one of the two has a label loaded
+    pairs_not_checked: unchecked,                  // neither has a label loaded
+  };
+}
+
+// ---- shared side effects: reactions two or more labels list among their most common ----
+// From each label's own one-sentence statement (labels.common_ar, migration 016).
+// These are clinical-trial incidences, each at that label's own threshold: they are
+// quoted side by side, never combined, and never mixed with FAERS numbers.
+async function sharedSideEffects(members) {
+  const { rows } = await pool.query(
+    `select drug_id, common_ar, common_ar_source from labels where drug_id = any($1) order by drug_id, id`,
+    [members.map(m => m.id)]);
+  const byDrug = new Map();                                  // drug -> { statement, terms by key }
+  for (const r of rows) {
+    const m = members.find(x => x.id === r.drug_id);
+    const entry = byDrug.get(m.prod_ai) ?? { statement: null, threshold: null, source: null, terms: new Map() };
+    if (r.common_ar) {
+      entry.statement ??= r.common_ar; entry.threshold ??= arThreshold(r.common_ar); entry.source ??= r.common_ar_source;
+      for (const t of arTerms(r.common_ar)) if (!entry.terms.has(t.key)) entry.terms.set(t.key, t.as_written);
+    }
+    byDrug.set(m.prod_ai, entry);
+  }
+  const index = new Map();                                   // reaction -> drugs listing it
+  for (const [drug, e] of byDrug) for (const [key, asWritten] of e.terms) {
+    if (!index.has(key)) index.set(key, []);
+    index.get(key).push({ drug, as_written: asWritten, label_threshold: e.threshold });
+  }
+  const shared = [...index].filter(([, ds]) => ds.length >= 2)
+    .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))
+    .map(([reaction, drugs]) => ({ reaction, listed_by: drugs }));
+  return {
+    what: 'Reactions that two or more labels in this set list among their own most common adverse reactions. Each is that label\'s clinical-trial statement at its own threshold — not FAERS, and not an incidence for the combination.',
+    shared: shared.slice(0, 10), shared_total: shared.length,
+    statements: [...byDrug].filter(([, e]) => e.statement)
+      .map(([drug, e]) => ({ drug, from: e.source, statement: e.statement.length > 260 ? e.statement.slice(0, 257) + '…' : e.statement })),
+    labels_without_a_statement: [...byDrug].filter(([, e]) => !e.statement).map(([d]) => d),
+    drugs_without_a_label: members.filter(m => !byDrug.has(m.prod_ai)).map(m => m.prod_ai),
+  };
+}
 
 export async function resolveRegimen(names) {
   const members = [], unresolved = [];
@@ -78,18 +223,11 @@ export async function analyzeRegimen({ drugs, showAll = false, policy = POLICY }
 
   // ---- layer 1: the graph walk ----
   const { rows: paths } = await pool.query(PATHS_SQL, [ids]);
-  const byName = new Map(members.map(m => [m.prod_ai, m.id]));
 
-  // ---- layer 3: Ω for the pairs the graph flagged (default), or every pair (show all) ----
-  const flaggedPairs = [];
-  for (const p of paths) {
-    const names = p.participants.concat(p.victim ? [p.victim] : []);
-    for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) flaggedPairs.push([byName.get(names[i]), byName.get(names[j])]);
-  }
-  const pairArgs = showAll ? [null, null] : [flaggedPairs.map(x => x[0]), flaggedPairs.map(x => x[1])];
-  const termFilter = showAll ? null : [...new Set(paths.map(p => EXPECTED_TERMS[p.mechanism]?.source).filter(Boolean))].join('|') || null;
-  const { rows: omega } = (showAll || flaggedPairs.length)
-    ? await pool.query(OMEGA_SQL, [ids, Math.min(policy.minObserved, 5), ...pairArgs, termFilter]) : { rows: [] };
+  // ---- layer 3: Ω for every pair in the set, every term. Always run, so an answer can never
+  // imply FAERS was checked when it was not (it used to run only for pairs the graph flagged).
+  const { rows: omega } = await pool.query(OMEGA_SQL, [ids, Math.min(policy.minObserved, 5), null, null, null]);
+  const pairsChecked = ids.length * (ids.length - 1) / 2;
   const reported = omega.map(r => ({
     ...r, observed: +r.observed, observed_raw: +r.observed_raw, cases_with_both: +r.cases_with_both, expected: +r.expected,
     omega: +r.omega, omega025: +r.omega025, rate_both: +r.rate_both, base_rate: +r.base_rate,
@@ -111,16 +249,23 @@ export async function analyzeRegimen({ drugs, showAll = false, policy = POLICY }
     };
   });
 
-  // ---- layer 3 on its own: never in the default view on four quarters. Co-reporting without a
-  // pathway is dominated by shared indication and by duplicate clusters; it is listed under
-  // show_all, scored below the floor, for an analyst who wants to look.
-  if (showAll) {
-    const seenPairs = new Set();
+  // ---- layer 3 on its own: never a flag in the default view. Co-reporting without a pathway is
+  // dominated by shared indication and by duplicate report clusters (checked on everyday
+  // regimens: statin + metformin gives "Cerebral hypoperfusion", "Binocular eye movement
+  // disorder" — one known cluster). The default view reports how many there were; show_all
+  // lists them, scored below the floor, for an analyst who wants to look.
+  const withoutPathway = [];
+  { const seenPairs = new Set();
     for (const r of reported) {
       if (r.cluster_like || r.omega025 < policy.minOmega025 || r.observed < policy.minObserved) continue;
       const key = [r.drug_a, r.drug_b].join('|');
-      if (seenPairs.has(key)) continue;
+      if (seenPairs.has(key) || flags.some(f => f.reported.some(x => x.pair.join('|') === key))) continue;
       seenPairs.add(key);
+      withoutPathway.push(r);
+    }
+  }
+  if (showAll) {
+    for (const r of withoutPathway) {
       flags.push({
         layer: 'reported', kind: 'co-reported', severity: null, mechanism: null, victim: null,
         participants: [{ drug: r.drug_a }, { drug: r.drug_b }], compounding: 2, sources: ['FAERS'],
@@ -151,6 +296,8 @@ export async function analyzeRegimen({ drugs, showAll = false, policy = POLICY }
   }
 
   const shown = flags.filter(f => f.score >= policy.minScore).slice(0, policy.maxFlags);
+  const label_cross_check = await labelCrossCheck(members);
+  const shared_label_side_effects = await sharedSideEffects(members);
   const { rows: [q] } = await pool.query(`select string_agg(distinct source_quarter, ', ' order by source_quarter) as quarters from cases`);
   return {
     boundary: 'This characterizes a combination of drugs, not a patient. No age, weight, organ function, indication or history is used.',
@@ -158,8 +305,18 @@ export async function analyzeRegimen({ drugs, showAll = false, policy = POLICY }
     flags: showAll ? flags : shown,
     suppressed: showAll ? 0 : flags.length - shown.length,
     policy: { max_flags: policy.maxFlags, min_score: policy.minScore, min_omega025: policy.minOmega025, min_observed: policy.minObserved },
-    reported_candidates: reported.filter(r => !r.cluster_like).length,
-    cluster_like_suppressed: reported.filter(r => r.cluster_like).length,
+    label_cross_check,
+    shared_label_side_effects,
+    faers: {
+      pairs_checked: pairsChecked,
+      pairs_with_co_reporting_but_no_pathway: withoutPathway.length,
+      population: 'reports listing 30 drugs or fewer, duplicates collapsed by demographics, event date and reaction list',
+      note: pairsChecked
+        ? `FAERS was checked for all ${pairsChecked} pair(s). ` + (withoutPathway.length
+            ? `${withoutPathway.length} pair(s) have a reaction reported together more than expected but no pathway in the graph; these are usually shared indication or duplicate reports, and are listed only under show_all.`
+            : 'No pair without a pathway had a reaction reported together above threshold.')
+        : 'Fewer than two drugs resolved; FAERS was not checked.',
+    },
   };
 }
 

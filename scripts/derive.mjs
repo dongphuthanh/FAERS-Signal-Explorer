@@ -17,9 +17,10 @@ try {
 
   // per-term case totals for the pairwise Ω query (migration 012); stale until refreshed
   await pool.query('refresh materialized view term_cases');
-  await pool.query('refresh materialized view case_profiles');
+  await pool.query('refresh materialized view case_profiles');        // before the three that read it
   await pool.query('refresh materialized view mention_counts');
   await pool.query('refresh materialized view mention_term_counts');
+  await pool.query('refresh materialized view pair_term_cases');
 
   // the report: what the derive did to the data
   const [{ rows: [v] }, { rows: [x] }, { rows: [u] }] = await Promise.all([

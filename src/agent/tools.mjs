@@ -21,7 +21,7 @@ export const TOOLS = [
       'reporting odds ratio (ROR) with 95% interval, and whether the drug\'s prescribing label describes it ' +
       '(described / related / none), with the label sentence as evidence. This is the "what is reported that the label ' +
       'does not describe" question. ' +
-      '"counts": case counts per reaction term for a drug or a drug class, optionally filtered by age bracket, ' +
+      '"counts": case counts per reaction term for a drug or a drug class, optionally filtered by an exact age range or an age bracket, ' +
       'serious-outcome codes, and a regex on the term. Use for "how many", "in patients over 65", "serious", "hepatic events". ' +
       '"compare": start from a REACTION and compare drugs — for one term pattern, the case count and ROR with interval for each ' +
       'named drug, or each drug in a class, or (with no drugs given) the drugs with the most disproportionate reporting of it ' +
@@ -39,7 +39,9 @@ export const TOOLS = [
         top: { type: 'integer', minimum: 1, maximum: 60, description: 'gap mode: how many terms to return (default 25).' },
         min_cases: { type: 'integer', minimum: 1, description: 'Minimum distinct cases for a term to be listed (default 10 in gap, 3 in counts).' },
         include_excluded: { type: 'boolean', description: 'gap mode: also show administrative/device terms that are normally suppressed.' },
-        age_bracket: { type: 'string', enum: AGE_BRACKETS, description: 'counts mode: restrict to one age bracket.' },
+        age_bracket: { type: 'string', enum: AGE_BRACKETS, description: 'counts mode: restrict to one fixed age bracket. Use only when the question names one of these brackets; for any other age ("over 55", "under 40", "70 to 80") use age_min / age_max.' },
+        age_min: { type: 'number', minimum: 0, maximum: 120, description: 'counts mode: youngest age in years, inclusive. "over 55" / "55 and older" -> 55.' },
+        age_max: { type: 'number', minimum: 0, maximum: 120, description: 'counts mode: oldest age in years, inclusive. "under 40" -> 39.99; "up to 40" -> 40.' },
         outcomes: { type: 'array', items: { type: 'string', enum: OUTCOMES }, description: 'counts mode: only cases with at least one of these outcome codes. DE death, LT life-threatening, HO hospitalization, DS disability, CA congenital anomaly, RI required intervention, OT other serious. For "deaths" or "fatal" use outcomes ["DE"], not a term_pattern — Death is also a reaction term, and the outcome code is the reliable one.' },
         term_pattern: { type: 'string', description: 'counts and compare modes: case-insensitive regex the reaction term must match, e.g. "hepat|liver" or "rhabdomyolysis|myopathy". Required in compare mode.' },
       },
@@ -106,7 +108,7 @@ export const HANDLERS = {
   async query_adverse_events(input) {
     const mode = input.mode ?? 'gap';
     if (mode === 'gap') {
-      const countsOnly = ['age_bracket', 'outcomes', 'term_pattern', 'drug_class'].filter(k => input[k] != null);
+      const countsOnly = ['age_bracket', 'age_min', 'age_max', 'outcomes', 'term_pattern', 'drug_class'].filter(k => input[k] != null);
       if (countsOnly.length) throw new Error(`${countsOnly.join(', ')} only apply in mode "counts". Gap mode has no filters; call again with mode "counts" for filtered counts, or drop the filter for the gap analysis.`);
       const d = await needDrug(input.drug, { needLabels: true });
       const r = await diffDrug({ prodAi: d.prod_ai, top: input.top ?? 25, minCases: input.min_cases ?? 10, includeExcluded: !!input.include_excluded });
@@ -125,9 +127,13 @@ export const HANDLERS = {
     }
     if (mode === 'counts') {
       if (!input.drug && !input.drug_class) throw new Error('counts mode needs drug or drug_class');
+      const ranged = input.age_min != null || input.age_max != null;
+      if (ranged && input.age_bracket) throw new Error('use either age_bracket or age_min/age_max, not both');
+      if (input.age_min != null && input.age_max != null && input.age_min > input.age_max) throw new Error('age_min is greater than age_max');
       const d = input.drug ? await needDrug(input.drug) : null;
       const rows = await reportCounts({
         drugId: d?.id ?? null, drugClass: input.drug_class ?? null, ageBracket: input.age_bracket ?? null,
+        ageMin: input.age_min ?? null, ageMax: input.age_max ?? null,
         outcomes: input.outcomes?.length ? input.outcomes : null, termPattern: input.term_pattern ?? null,
         minCases: input.min_cases ?? 3, limit: 50,
       });
@@ -135,10 +141,16 @@ export const HANDLERS = {
       return {
         mode, resolved: d ? { input: input.drug, prod_ai: d.prod_ai, via: d.via } : { drug_class: input.drug_class },
         quarters: q.quarters,
-        filters: { age_bracket: input.age_bracket ?? null, outcomes: input.outcomes ?? null, term_pattern: input.term_pattern ?? null, roles: ['PS', 'SS'] },
-        exposed_cases: rows[0]?.exposed_cases ?? 0, filtered_cases: rows[0]?.filtered_cases ?? 0,
+        filters: { age_bracket: input.age_bracket ?? null, age_min: input.age_min ?? null, age_max: input.age_max ?? null,
+                   outcomes: input.outcomes ?? null, term_pattern: input.term_pattern ?? null, roles: ['PS', 'SS'] },
+        // three nested counts, named so they cannot be read as each other
+        drug_cases: rows[0]?.exposed_cases ?? 0,                        // every case naming the drug/class as suspect
+        cases_meeting_age_and_outcome_filters: rows[0]?.filtered_cases ?? 0,   // ...of those, age and outcome filters applied
+        cases_meeting_all_filters: rows[0]?.matching_cases ?? 0,        // ...and reporting at least one term matching term_pattern
+        ...(ranged ? { age_unknown_cases: rows[0]?.age_unknown_cases ?? null,
+                       age_note: 'Cases with no recorded age are not counted in an age range; age_unknown_cases is how many of the drug cases that left out.' } : {}),
         terms: rows.map(r => ({ term: r.reaction_term, cases: r.cases })),
-        note: 'cases = distinct FAERS cases naming a target drug as suspect and matching every filter. Not a rate.',
+        note: 'drug_cases ⊇ cases_meeting_age_and_outcome_filters ⊇ cases_meeting_all_filters. The answer to "how many cases" is cases_meeting_all_filters. terms[].cases counts each term separately; one case can report several terms, so they do not add up to it. Not a rate.',
       };
     }
     if (mode === 'compare') {
@@ -188,6 +200,9 @@ export const HANDLERS = {
         labels: f.labels, no_label_loaded: f.no_label_loaded,
       })),
       suppressed: r.suppressed,
+      label_cross_check: r.label_cross_check,
+      shared_label_side_effects: r.shared_label_side_effects,
+      faers: r.faers,
       policy: r.policy,
       notes: [
         'Pathway flags come from the loaded interaction graph (FDA CYP/transporter categories and pharmacodynamic classes, hand-seeded). A drug listed in graph_unknown has no edges: the graph knows nothing about it, which is not the same as no interaction.',

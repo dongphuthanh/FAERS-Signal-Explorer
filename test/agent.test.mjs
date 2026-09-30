@@ -111,10 +111,36 @@ test('query_adverse_events gap: semaglutide, trimmed result with statuses and ev
 test('query_adverse_events counts: statins, 65+, serious, hepatic — target question 2', async () => {
   const r = await HANDLERS.query_adverse_events({
     mode: 'counts', drug_class: 'statin', age_bracket: '65+', outcomes: ['DE', 'LT', 'HO', 'DS'], term_pattern: 'hepat|liver' });
-  assert.ok(r.filtered_cases > 0 && r.filtered_cases < r.exposed_cases);
+  assert.ok(r.cases_meeting_all_filters > 0 && r.cases_meeting_all_filters < r.cases_meeting_age_and_outcome_filters);
+  assert.ok(r.cases_meeting_age_and_outcome_filters < r.drug_cases);
+  assert.ok(r.cases_meeting_all_filters >= r.terms[0].cases, 'at least as many cases as the top term');
   assert.ok(r.terms.length > 0);
   for (const t of r.terms) assert.match(t.term, /hepat|liver/i);
   assert.ok(r.terms.every((t, i, a) => i === 0 || a[i - 1].cases >= t.cases), 'sorted by cases desc');
+});
+
+test('query_adverse_events counts: an exact age range — "over 55", the question the physicians asked first', async () => {
+  const base = { mode: 'counts', drug_class: 'statin', outcomes: ['DE', 'LT', 'HO', 'DS'], term_pattern: 'hepat|liver' };
+  const over55 = await HANDLERS.query_adverse_events({ ...base, age_min: 55 });
+  const b4564  = await HANDLERS.query_adverse_events({ ...base, age_bracket: '45-64' });
+  const b65    = await HANDLERS.query_adverse_events({ ...base, age_bracket: '65+' });
+  const min65  = await HANDLERS.query_adverse_events({ ...base, age_min: 65 });
+  // age_min 65 is the 65+ bracket exactly: same cases, same counts
+  assert.equal(min65.cases_meeting_all_filters, b65.cases_meeting_all_filters);
+  assert.deepEqual(min65.terms, b65.terms);
+  // over 55 sits strictly between "65+" and "45-64 plus 65+"
+  assert.ok(over55.cases_meeting_all_filters > b65.cases_meeting_all_filters);
+  assert.ok(over55.cases_meeting_all_filters < b65.cases_meeting_all_filters + b4564.cases_meeting_all_filters);
+  // the tool says what it used and how many cases had no age to test
+  assert.equal(over55.filters.age_min, 55);
+  assert.ok(over55.age_unknown_cases > 0);
+  assert.match(over55.age_note, /no recorded age/);
+  // a closed range, and the two guards
+  const r = await HANDLERS.query_adverse_events({ ...base, age_min: 55, age_max: 70 });
+  assert.ok(r.cases_meeting_all_filters < over55.cases_meeting_all_filters);
+  await assert.rejects(HANDLERS.query_adverse_events({ ...base, age_min: 55, age_bracket: '65+' }), /either age_bracket or age_min/);
+  await assert.rejects(HANDLERS.query_adverse_events({ ...base, age_min: 70, age_max: 55 }), /greater than/);
+  await assert.rejects(HANDLERS.query_adverse_events({ drug: 'semaglutide', age_min: 55 }), /only apply in mode "counts"/);
 });
 
 test('query_adverse_events gap: refuses a drug with no label, helpfully', async () => {

@@ -97,14 +97,18 @@ export async function excludedCount({ drugId, minCases = 10 }) {
 //
 //   drugId     one drug (salt forms included)      drugClass  every curated drug in a class
 //   ageBracket '<18' | '18-44' | '45-64' | '65+' | 'unknown'
+//   ageMin / ageMax  exact ages in years, inclusive ("over 55" -> ageMin 55); cases
+//              with no recorded age are left out when either is given, and counted
 //   outcomes   subset of DE LT HO DS CA RI OT       termPattern  case-insensitive regex on the reaction term
-export async function reportCounts({ drugId = null, drugClass = null, ageBracket = null, outcomes = null,
-                                     termPattern = null, minCases = 3, limit = 50 }) {
+export async function reportCounts({ drugId = null, drugClass = null, ageBracket = null, ageMin = null, ageMax = null,
+                                     outcomes = null, termPattern = null, minCases = 3, limit = 50 }) {
   const { rows } = await pool.query(`
     with exposed as (select case_id from suspect_cases($1, $2)),
     filtered as (
       select e.case_id from exposed e join cases c on c.id = e.case_id
       where ($3::text is null or c.age_bracket = $3)
+        and ($8::numeric is null or c.age_years >= $8)
+        and ($9::numeric is null or c.age_years <= $9)
         and ($4::text[] is null or exists (select 1 from case_outcomes o where o.case_id = e.case_id and o.outc_cod = any($4)))
     ),
     terms as (
@@ -116,9 +120,15 @@ export async function reportCounts({ drugId = null, drugClass = null, ageBracket
     )
     select reaction_term, cases::int,
            (select count(*) from exposed)::int  as exposed_cases,
-           (select count(*) from filtered)::int as filtered_cases
+           (select count(*) from filtered)::int as filtered_cases,
+           (select count(distinct f.case_id) from filtered f join case_reactions cr on cr.case_id = f.case_id
+             left join excluded_terms x on x.term = cr.reaction_term
+             where x.term is null and ($5::text is null or cr.reaction_term ~* $5))::int as matching_cases,
+           case when $8::numeric is null and $9::numeric is null then null
+                else (select count(*) from exposed e join cases c on c.id = e.case_id where c.age_years is null)::int
+           end as age_unknown_cases
     from terms order by cases desc, reaction_term limit $7`,
-    [drugId, drugClass, ageBracket, outcomes, termPattern, minCases, limit]);
+    [drugId, drugClass, ageBracket, outcomes, termPattern, minCases, limit, ageMin, ageMax]);
   return rows;
 }
 

@@ -13,8 +13,13 @@
 -- the query only walks the cases a pair actually shares.
 --
 -- Duplicates: FAERS files one event many times (several manufacturers). The
--- shared-cases stratum counts distinct case profiles (case_profiles,
--- migration 013), not cases; raw counts are returned alongside.
+-- shared-cases stratum counts distinct case profiles (demographics, event
+-- date, reaction list — case_profiles, migration 015), not cases; raw counts
+-- are returned alongside.
+--
+-- Population: only reports listing 30 drugs or fewer (in_pair_population,
+-- 99.1% of cases). A report listing a hundred drugs co-lists every pair and
+-- says nothing about any one of them. Every stratum below uses this population.
 --
 -- "Mentions" means any role (PS, SS, C, I): this is the one place in the
 -- project where concomitant rows count. Ω corrects for each drug's own
@@ -30,7 +35,9 @@ rows_of as (                                            -- member -> all its row
   from regimen r join drugs d on d.id = r.drug_id or d.canonical_id = r.drug_id),
 mention as (
   select distinct x.member, cd.case_id
-  from case_drugs cd join rows_of x on x.row_id = cd.drug_id
+  from case_drugs cd
+  join rows_of x on x.row_id = cd.drug_id
+  join case_profiles cp on cp.case_id = cd.case_id and cp.in_pair_population
   where cd.role_cod in ('PS', 'SS', 'C', 'I')),
 pairs as (
   select a.drug_id as a, b.drug_id as b
@@ -51,7 +58,7 @@ n as (
   join mention_counts ca on ca.drug_id = s.a
   join mention_counts cb on cb.drug_id = s.b
   group by s.a, s.b, ca.n_cases, cb.n_cases),
-total as materialized (select count(*) as big_n from cases),
+total as materialized (select count(*) as big_n from case_profiles where in_pair_population),
 counts as (                                             -- per term, among the shared cases
   select s.a, s.b, cr.reaction_term,
          count(distinct s.profile) as n11r, count(*) as n11r_raw
@@ -68,7 +75,7 @@ model as (
          tt.n_cases::numeric / t.big_n                  as base_rate
   from counts c
   join n using (a, b)
-  join term_cases tt using (reaction_term)
+  join pair_term_cases tt using (reaction_term)
   left join mention_term_counts ta on ta.drug_id = c.a and ta.reaction_term = c.reaction_term
   left join mention_term_counts tb on tb.drug_id = c.b and tb.reaction_term = c.reaction_term
   cross join total t

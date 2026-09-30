@@ -18,6 +18,7 @@
     "labels:fetch": "node --env-file=.env scripts/fetch-dailymed.mjs",
     "labels:ingest": "node --env-file=.env scripts/ingest-dailymed.mjs",
     "labels:embed": "node --env-file=.env scripts/embed-labels.mjs",
+    "labels:common": "node --env-file=.env scripts/common-ar.mjs",
     "search": "node --env-file=.env scripts/search.mjs",
     "eval:retrieval": "node --env-file=.env scripts/eval-retrieval.mjs",
     "terms:load": "node --env-file=.env scripts/load-exclusions.mjs",
