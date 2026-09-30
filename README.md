@@ -173,7 +173,9 @@ test/            node:test, 44 tests, all runnable without a key
 
 ## Status
 
-Phases 1–6 of the build order in [`CLAUDE.md`](CLAUDE.md) are done, with Phase 2 (RxNorm) reduced to salt-form grouping because `prod_ai` made the rest unnecessary for the curated set. Next, in order of value: the physician-authored eval tranche; near-duplicate detection across manufacturers; Bayesian shrinkage (IC) alongside ROR, which would have pulled the 26-case cluster down the ranking; and a within-class comparator as a parameter on the signal query.
+The single-drug tool is complete: ingestion, the signal query, hybrid label retrieval, the label diff, the agent, and the evals. Drug identity is handled by FAERS's `prod_ai` field plus salt-form grouping rather than a full RxNorm mapping, which the curated set turned out not to need. Since then the signal query has gained the information component (IC) alongside ROR and a within-class comparator, and two question types have been added: comparing one reaction across drugs, and analyzing a regimen of several drugs (interaction pathways, what each label says about the others, side effects their labels share, and pairwise FAERS co-reporting).
+
+Next, in order of value: the physician-authored eval tranche, for single-drug questions and regimen judgments; near-duplicate detection across manufacturers for the single-drug ranking (the pairwise statistic already collapses duplicates and leaves out reports listing more than 30 drugs); and interaction edges from a licensed source to replace the hand-seeded graph.
 
 ## Documents
 
