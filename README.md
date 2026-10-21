@@ -152,6 +152,59 @@ npm run eval:agent                           # 20 questions through the agent (n
 
 `CLAUDE_MODEL` in `.env` selects the model; `claude-haiku-4-5` for iteration, `claude-opus-5` for the final run.
 
+## Deploying on AWS
+
+The demo used to run on a laptop behind a Cloudflare quick tunnel: the URL changed on every restart and nothing worked while the laptop slept. [`infra/`](infra/) is one CDK stack (JavaScript, like the app) that runs the same code on AWS.
+
+```
+browser ──HTTPS──► App Runner ─── the Dockerfile's image, from ECR; one instance
+                       │ VPC connector (private subnets, outbound via one NAT gateway)
+                       ▼
+                 RDS PostgreSQL 16 + pgvector ─── isolated subnets, no route out
+                       ▲
+  S3 ─────────────────┘ pg_dump → temporary box (SSM Run Command, no SSH) → pg_restore
+  raw FAERS zips, DailyMed XML, the dump
+
+Secrets Manager: DB credentials, ANTHROPIC_API_KEY, DEMO_PASSWORD → injected as env vars
+CloudWatch: app logs (one JSON line per question) · alarms on 5xx, DB CPU, DB storage → SNS email
+```
+
+Decisions, and why:
+
+- **Restore a dump instead of re-running ingestion.** The local database is already derived and tested. `pg_dump` compresses its 5.2 GB to 443 MB (most of it is indexes, rebuilt on restore). After the restore, every table count, all 22 tables and all 54 indexes matched the laptop.
+- **S3 is the raw layer.** The quarterly zips and label XML are kept there unchanged, the same rule as `raw_*` in the database. The bucket is kept when the stack is destroyed.
+- **App Runner, one instance.** It gives a stable HTTPS URL with no load balancer or domain. The daily question cap is counted in the process, so a second instance would double it. Scaling is pinned to 1.
+- **Database in subnets with no internet route.** Only the App Runner connector and the restore box's security groups can reach port 5432. Connections use TLS, verified against the RDS CA bundle in the image.
+- **No runtime downloads.** The MiniLM model is in the image. Embeddings work in a container with no network at all.
+- **Secrets never touch the repo or the image.** `.dockerignore` is an allowlist (`src`, `sql`, `drugs.json`, `data/models`, the package files), so `.env` cannot slip in. The Anthropic key is pasted into Secrets Manager by hand.
+- **The server refuses to listen publicly without a password.** An empty `DEMO_PASSWORD` turns the password check off, which is fine on 127.0.0.1. With `HOST=0.0.0.0`, the server exits instead.
+
+Cost, from the AWS Pricing API (us-east-2):
+- **While running, about $3.25/day:** RDS `db.t4g.medium` $1.56, the NAT gateway about $1.10, App Runner idle $0.34, plus the public IP, storage and secrets.
+- **Destroyed:** under $1/month for the S3 data and the final RDS snapshot.
+
+The stack is meant to be torn down between demos.
+
+```bash
+cd infra && npm install
+npx cdk bootstrap aws://<account>/us-east-2 --profile <profile>        # once
+npx cdk deploy --profile <profile> -c alertEmail=<you@example.com>     # ~15 min, mostly RDS
+# paste the Anthropic key: Secrets Manager → AnthropicKey… → edit; then restart the App Runner service
+
+# load the data
+docker exec faers-db pg_dump -U postgres -d faers -Fc -f /tmp/faers.dump   # then docker cp it to data/
+aws s3 cp data/faers.dump s3://<BucketName>/dumps/faers.dump
+npx cdk deploy ... -c restore=true            # adds the restore box (t4g.small, SSM only)
+# run infra/restore.sh on it with SSM Run Command: <bucket> <DbSecretArn> <region>
+npx cdk deploy ...                            # without restore=true: the box is removed
+
+npx cdk destroy --profile <profile>           # stops the charges; keeps the S3 bucket and a final snapshot
+```
+
+What went wrong:
+- **The `lexeme_df` view came back empty.** `pg_restore` refreshes materialized views with an empty `search_path`, so its query could not find `chunks`. `restore.sh` now refreshes any unpopulated view afterwards.
+- **Git Bash rewrote container paths.** On Windows, `/tmp` in a `docker exec` argument became `C:/Users/.../Temp`. The fix is `MSYS_NO_PATHCONV=1`.
+
 ## Layout
 
 ```
@@ -169,6 +222,8 @@ evals/           questions.jsonl · retrieval.jsonl · results files (appended, 
 drugs.json       the 43 curated drugs, their labels, their salt-form aliases
 excluded_terms.json
 test/            node:test, 44 tests, all runnable without a key
+Dockerfile       the web server image (no database, no ingestion); .dockerignore is an allowlist
+infra/           CDK stack (lib/faers-stack.mjs) · restore.sh, run on the temporary restore box
 ```
 
 ## Status

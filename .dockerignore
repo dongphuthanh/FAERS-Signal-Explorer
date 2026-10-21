@@ -1,0 +1,9 @@
+# allowlist: only what the server needs goes into the image. Nothing else,
+# so .env, data/faers and the session log can't slip in.
+*
+!package.json
+!package-lock.json
+!src
+!sql
+!drugs.json
+!data/models

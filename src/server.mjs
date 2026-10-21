@@ -14,8 +14,11 @@ import { finalText, MODEL } from './agent/loop.mjs';
 // Every question and answer is appended to evals/sessions.jsonl. The people
 // asking are the reviewers; their questions are the eval set and their
 // objections are the disagreement log, so nothing they type is lost.
+// In a container the filesystem is thrown away, so LOG_TO_STDOUT=1 prints each
+// record as one JSON line instead, and the platform's log store keeps it.
 const SESSIONS = 'evals/sessions.jsonl';
-await mkdir('evals', { recursive: true });
+const TO_STDOUT = !!process.env.LOG_TO_STDOUT;
+if (!TO_STDOUT) await mkdir('evals', { recursive: true });
 const whoFrom = (auth) => { try { return Buffer.from(auth.slice(6), 'base64').toString('utf8').split(':')[0] || 'anonymous'; } catch { return 'anonymous'; } };
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -70,12 +73,20 @@ app.post('/ask', async (request, reply) => {
   }
   record.ms = Date.now() - t0;
   reply.raw.end();
-  appendFile(SESSIONS, JSON.stringify(record) + '\n').catch(e => app.log.warn(`could not write ${SESSIONS}: ${e.message}`));
+  if (TO_STDOUT) console.log(JSON.stringify({ session: record }));
+  else appendFile(SESSIONS, JSON.stringify(record) + '\n').catch(e => app.log.warn(`could not write ${SESSIONS}: ${e.message}`));
   return reply;
 });
 
 app.get('/health', async () => ({ ok: true, stub: !!process.env.STUB, password: !!PASSWORD, questions_left_today: cap.remaining() }));
 
+// Loopback by default. HOST=0.0.0.0 (the container) is reachable from outside,
+// and an empty DEMO_PASSWORD means no password check at all, so refuse that pair.
 const port = Number(process.env.PORT || 3000);
-await app.listen({ port, host: '127.0.0.1' });
-console.log(`  FAERS Signal Explorer on http://127.0.0.1:${port}${process.env.STUB ? '  (STUB mode)' : ''}${PASSWORD ? '  · password on' : '  · NO PASSWORD — localhost only'}  · ${cap.limit} questions/day`);
+const host = process.env.HOST || '127.0.0.1';
+if (!PASSWORD && !['127.0.0.1', 'localhost', '::1'].includes(host)) {
+  console.error(`  refusing to listen on ${host} without DEMO_PASSWORD`);
+  process.exit(1);
+}
+await app.listen({ port, host });
+console.log(`  FAERS Signal Explorer on http://${host}:${port}${process.env.STUB ? '  (STUB mode)' : ''}${PASSWORD ? '  · password on' : '  · NO PASSWORD — localhost only'}  · ${cap.limit} questions/day`);
